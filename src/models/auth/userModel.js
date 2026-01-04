@@ -1,33 +1,56 @@
 import mongoose from "mongoose";
+import validator from "validator";
 
 const userSchema = new mongoose.Schema({
   username: { 
     type: String, 
     required: true, 
-    unique: true,
+    unique: [true,'Please provide a unique username'],
     trim: true,
     minlength: 3
   },
   email: {
     type: String,
-    unique: true,
+    unique: [true,'Please provide a unique email'],
     sparse: true, // Allows null values while maintaining uniqueness
     lowercase: true,
-    trim: true
+    trim: true,
+    validate: {
+      validator: validator.isEmail,
+      message: "Please provide a valid email address"
+    }
   },
   password: { 
     type: String, 
-    required: true, 
-    minlength: 8,
+    required: [true,'Please provide a password'],  
+    minlength: [8,'Please provide a password with minimum length of 8 characters'],
     select: false // Don't include password in queries by default
   },
 
-  // Roles assigned to this user
-  roles: [{
+  passwordConfirm: {
+    type: String,
+    required: [true,'Please provide a password confirmation '],
+    validate: {
+      validator: function(v) {
+        return this.password === v;
+      },
+      message: "Passwords do not match"
+    }
+  },
+
+ // Roles assigned to this user
+roles: {
+  type: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "Role"
   }],
-
+  validate: {
+    validator: function(v) {
+      return v && v.length > 0;
+    },
+    message: 'Please provide at least one role'
+  }
+},
   // Direct permission overrides (Admin can assign extra permissions or deny specific ones)
   directPermissions: [{
     permission: {
@@ -60,6 +83,16 @@ const userSchema = new mongoose.Schema({
 
 }, {
   timestamps: true
+});
+
+// works on create and save methods
+userSchema.pre('save', async function(next) {
+   if(!this.isModified('password')) return next();
+
+    this.password=await bcrypt.hash(this.password,12);
+    this.passwordConfirm=undefined;
+    next();
+
 });
 
 // Method to check if user has a specific permission

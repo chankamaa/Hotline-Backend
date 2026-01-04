@@ -82,6 +82,6 @@ for (const roleName of Object.values(ROLES)) {
   }
 }
 
-console.log("\n✅ Seeded all roles successfully!");
+console.log("\n Seeded all roles successfully!");
 
 await mongoose.disconnect();

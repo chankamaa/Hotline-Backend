@@ -10,11 +10,11 @@ import AppError from "../../utils/appError.js";
  * POST /api/users
  */
 export const createUser = catchAsync(async (req, res, next) => {
-  const { username, email, password, roles } = req.body;
+  const { username, email, password, passwordConfirm, roles } = req.body;
 
   // Validate required fields
-  if (!username || !password) {
-    return next(new AppError("Username and password are required", 400));
+  if (!username || !password || !passwordConfirm || !roles) {
+    return next(new AppError("Please provide all required fields", 400));
   }
 
   // Check if username already exists
@@ -22,9 +22,6 @@ export const createUser = catchAsync(async (req, res, next) => {
   if (existingUser) {
     return next(new AppError("Username already exists", 400));
   }
-
-  // Hash password
-  const hashedPassword = await bcrypt.hash(password, 10);
 
   // Validate roles if provided
   let roleIds = [];
@@ -44,7 +41,8 @@ export const createUser = catchAsync(async (req, res, next) => {
   const user = await User.create({
     username,
     email,
-    password: hashedPassword,
+    password,
+    passwordConfirm,
     roles: roleIds
   });
 

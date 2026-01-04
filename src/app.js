@@ -1,6 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import morgan from 'morgan';
+
+import AppError from './utils/appError.js';
+import { errorController } from './controllers/errorController.js';
 
 // Routes
 import authRoutes from './routes/auth/authRoutes.js';
@@ -10,12 +16,33 @@ import permissionRoutes from './routes/auth/permissionRoutes.js';
 
 const app = express();
 
-// Middleware
+// Security Middleware
+app.use(helmet()); // Set security HTTP headers
+
+// Rate limiting - prevent brute force attacks
+const limiter = rateLimit({
+  max: 100, // 100 requests per window
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  message: 'Too many requests from this IP, please try again after 15 minutes',
+  standardHeaders: true, // Return rate limit info in headers
+  legacyHeaders: false,
+});
+app.use('/api', limiter);
+
+// Request logging
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined'));
+}
+
+// Body parser and CORS
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10kb' })); // Limit body size
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
 
 // API Routes
@@ -26,63 +53,19 @@ app.use("/api/v1/permissions", permissionRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
 });
 
-// 404 handler
+// 404 handler - undefined routes handler
 app.use((req, res, next) => {
-  res.status(404).json({
-    status: "error",
-    message: `Route ${req.originalUrl} not found`
-  });
+  next(new AppError(`Cannot find ${req.originalUrl} on this server`, 404));
 });
 
 // Global error handler
-app.use((err, req, res, next) => {
-  console.error("Error:", err);
-
-  // Handle AppError instances
-  if (err.isOperational) {
-    return res.status(err.statusCode).json({
-      status: "error",
-      message: err.message
-    });
-  }
-
-  // Handle mongoose validation errors
-  if (err.name === "ValidationError") {
-    const messages = Object.values(err.errors).map(e => e.message);
-    return res.status(400).json({
-      status: "error",
-      message: "Validation error",
-      errors: messages
-    });
-  }
-
-  // Handle mongoose duplicate key errors
-  if (err.code === 11000) {
-    const field = Object.keys(err.keyValue)[0];
-    return res.status(400).json({
-      status: "error",
-      message: `${field} already exists`
-    });
-  }
-
-  // Handle JWT errors
-  if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
-    return res.status(401).json({
-      status: "error",
-      message: "Invalid or expired token"
-    });
-  }
-
-  // Generic server error
-  res.status(500).json({
-    status: "error",
-    message: process.env.NODE_ENV === "production" 
-      ? "Internal server error" 
-      : err.message
-  });
-});
+app.use(errorController);
 
 export default app;
