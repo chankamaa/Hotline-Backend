@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import validator from "validator";
+import bcrypt from "bcrypt";
 
 const userSchema = new mongoose.Schema({
   username: { 
@@ -86,13 +87,11 @@ roles: {
 });
 
 // works on create and save methods
-userSchema.pre('save', async function(next) {
-   if(!this.isModified('password')) return next();
+userSchema.pre('save', async function() {
+  if (!this.isModified('password')) return;
 
-    this.password=await bcrypt.hash(this.password,12);
-    this.passwordConfirm=undefined;
-    next();
-
+  this.password = await bcrypt.hash(this.password, 12);
+  this.passwordConfirm = undefined;
 });
 
 // Method to check if user has a specific permission

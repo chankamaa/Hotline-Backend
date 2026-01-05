@@ -13,6 +13,9 @@ import authRoutes from './routes/auth/authRoutes.js';
 import userRoutes from './routes/auth/userRoutes.js';
 import roleRoutes from './routes/auth/roleRoutes.js';
 import permissionRoutes from './routes/auth/permissionRoutes.js';
+import categoryRoutes from './routes/product/categoryRoutes.js';
+import productRoutes from './routes/product/productRoutes.js';
+import inventoryRoutes from './routes/inventory/inventoryRoutes.js';
 
 const app = express();
 
@@ -50,6 +53,9 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/roles", roleRoutes);
 app.use("/api/v1/permissions", permissionRoutes);
+app.use("/api/v1/categories", categoryRoutes);
+app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/inventory", inventoryRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
