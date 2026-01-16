@@ -34,8 +34,14 @@ const PERMISSION_DESCRIPTIONS = {
   DELETE_PRODUCT: "Delete/deactivate products",
   MANAGE_INVENTORY: "Add, update, delete inventory items",
   VIEW_INVENTORY: "View inventory list",
-  DEVICE_REPAIR: "Manage device repairs",
-  VIEW_REPAIRS: "View repair records",
+  CREATE_REPAIR: "Create new repair jobs",
+  VIEW_REPAIRS: "View all repair jobs",
+  VIEW_OWN_REPAIRS: "View own assigned repair jobs",
+  ASSIGN_REPAIR: "Assign repair jobs to technicians",
+  UPDATE_REPAIR: "Update repair job status and details",
+  COMPLETE_REPAIR: "Mark repair job as completed",
+  COLLECT_REPAIR_PAYMENT: "Collect payment for repairs",
+  CANCEL_REPAIR: "Cancel repair jobs",
   MANAGE_SETTINGS: "Manage system settings",
 };
 

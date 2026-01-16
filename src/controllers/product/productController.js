@@ -1,5 +1,6 @@
 import Product from "../../models/product/productModel.js";
 import Category from "../../models/product/categoryModel.js";
+import Stock from "../../models/inventory/stockModel.js";
 import catchAsync from "../../utils/catchAsync.js";
 import AppError from "../../utils/appError.js";
 
@@ -77,11 +78,13 @@ export const createProduct = catchAsync(async (req, res, next) => {
  *   - isActive: Filter by active status
  *   - page, limit: Pagination
  *   - sort: Sort field (e.g., "name", "-sellingPrice")
+ *   - includeStock: Include stock data (default: true for POS)
  */
 export const getProducts = catchAsync(async (req, res, next) => {
   const { 
     category, search, minPrice, maxPrice, 
-    isActive, page = 1, limit = 20, sort = "name" 
+    isActive, page = 1, limit = 20, sort = "name",
+    includeStock = "true"
   } = req.query;
 
   // Build query
@@ -130,16 +133,46 @@ export const getProducts = catchAsync(async (req, res, next) => {
     Product.countDocuments(query)
   ]);
 
+  // Include stock data if requested
+  let productsWithStock = products;
+  if (includeStock === "true") {
+    // Get all stock records for these products in one query
+    const productIds = products.map(p => p._id);
+    const stockRecords = await Stock.find({ product: { $in: productIds } });
+    
+    // Create a map for quick lookup
+    const stockMap = new Map();
+    stockRecords.forEach(s => {
+      stockMap.set(s.product.toString(), s.quantity);
+    });
+    
+    // Add stock to each product
+    productsWithStock = products.map(p => {
+      const productObj = p.toObject();
+      const stockQty = stockMap.get(p._id.toString()) ?? 0;
+      
+      return {
+        ...productObj,
+        stock: stockQty,
+        stockStatus: stockQty === 0 
+          ? "OUT_OF_STOCK" 
+          : stockQty <= (p.minStockLevel || 5) 
+            ? "LOW_STOCK" 
+            : "IN_STOCK"
+      };
+    });
+  }
+
   res.json({
     status: "success",
-    results: products.length,
+    results: productsWithStock.length,
     pagination: {
       page: pageNum,
       limit: limitNum,
       total,
       pages: Math.ceil(total / limitNum)
     },
-    data: { products }
+    data: { products: productsWithStock }
   });
 });
 

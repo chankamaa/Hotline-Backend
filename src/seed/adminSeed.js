@@ -39,10 +39,10 @@ if (!existingAdmin) {
   console.log("    Password: admin@123");
   console.log("    ⚠ Please change this password immediately!");
 } else {
-  // Update existing admin to be super admin
+  // Update existing admin to be super admin (skip validation)
   existingAdmin.isSuperAdmin = true;
   existingAdmin.roles = [adminRole._id];
-  await existingAdmin.save();
+  await existingAdmin.save({ validateBeforeSave: false });
   console.log("  ✓ Updated existing admin as super admin");
 }
 
