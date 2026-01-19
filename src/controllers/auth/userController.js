@@ -103,7 +103,7 @@ export const getUser = catchAsync(async (req, res, next) => {
  * PUT /api/users/:id
  */
 export const updateUser = catchAsync(async (req, res, next) => {
-  const { username, email, isActive, password } = req.body;
+  const { username, email, isActive, password, passwordConfirm } = req.body;
 
   const user = await User.findById(req.params.id);
   if (!user) {
@@ -119,7 +119,15 @@ export const updateUser = catchAsync(async (req, res, next) => {
   if (username) user.username = username;
   if (email) user.email = email;
   if (typeof isActive === "boolean") user.isActive = isActive;
-  if (password) user.password = await bcrypt.hash(password, 10);
+  
+  // Handle password update - let the model's pre-save hook do the hashing
+  if (password) {
+    if (!passwordConfirm) {
+      return next(new AppError("Please provide password confirmation when updating password", 400));
+    }
+    user.password = password;  // Don't hash here - the pre-save hook will do it
+    user.passwordConfirm = passwordConfirm;
+  }
 
   await user.save();
 
@@ -135,6 +143,7 @@ export const updateUser = catchAsync(async (req, res, next) => {
     }
   });
 });
+
 
 /**
  * Delete user (soft delete)

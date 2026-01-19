@@ -30,9 +30,15 @@ const userSchema = new mongoose.Schema({
 
   passwordConfirm: {
     type: String,
-    required: [true,'Please provide a password confirmation '],
+    // Only required when creating new user or updating password
+    required: [function() {
+      // Required if: new document OR password is being modified
+      return this.isNew || this.isModified('password');
+    }, 'Please provide a password confirmation'],
     validate: {
       validator: function(v) {
+        // Only validate if passwordConfirm is provided
+        if (!v) return true;
         return this.password === v;
       },
       message: "Passwords do not match"

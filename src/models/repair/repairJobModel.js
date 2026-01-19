@@ -284,7 +284,7 @@ repairJobSchema.statics.generateJobNumber = async function() {
 };
 
 // Pre-save hook to calculate totals
-repairJobSchema.pre("save", function(next) {
+repairJobSchema.pre("save", async function() {
   // Calculate parts total
   this.partsTotal = this.partsUsed.reduce((sum, part) => sum + part.total, 0);
   
@@ -300,8 +300,6 @@ repairJobSchema.pre("save", function(next) {
   } else {
     this.paymentStatus = PAYMENT_STATUS.PENDING;
   }
-  
-  next();
 });
 
 export default mongoose.model("RepairJob", repairJobSchema);
