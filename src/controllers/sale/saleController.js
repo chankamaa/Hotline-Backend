@@ -2,6 +2,7 @@ import Sale, { SALE_STATUS, DISCOUNT_TYPES } from "../../models/sale/saleModel.j
 import Product from "../../models/product/productModel.js";
 import Stock from "../../models/inventory/stockModel.js";
 import StockAdjustment, { ADJUSTMENT_TYPES } from "../../models/inventory/stockAdjustmentModel.js";
+import Warranty from "../../models/warranty/warrantyModel.js";
 import catchAsync from "../../utils/catchAsync.js";
 import AppError from "../../utils/appError.js";
 
@@ -15,6 +16,7 @@ export const createSale = catchAsync(async (req, res, next) => {
     payments, 
     discountType, 
     discountValue, 
+    customer,
     notes 
   } = req.body;
 
@@ -63,6 +65,7 @@ export const createSale = catchAsync(async (req, res, next) => {
       product: product._id,
       productName: product.name,
       sku: product.sku,
+      serialNumber: item.serialNumber || null,
       quantity,
       unitPrice,
       taxRate,
@@ -116,6 +119,11 @@ export const createSale = catchAsync(async (req, res, next) => {
     saleNumber,
     items: processedItems,
     payments: processedPayments,
+    customer: customer ? {
+      name: customer.name || null,
+      phone: customer.phone || null,
+      email: customer.email || null
+    } : null,
     subtotal: Math.round(subtotal * 100) / 100,
     discountType: discountType || null,
     discountValue: discountValue || 0,
@@ -153,12 +161,54 @@ export const createSale = catchAsync(async (req, res, next) => {
     });
   }
 
+  // Auto-create warranties for products with warranty duration (if customer info provided)
+  const createdWarranties = [];
+  if (customer && customer.phone && customer.name) {
+    for (const item of processedItems) {
+      const product = await Product.findById(item.product);
+      if (product && product.warrantyDuration > 0) {
+        // Create warranty for each unit sold
+        for (let i = 0; i < item.quantity; i++) {
+          const warrantyNumber = await Warranty.generateWarrantyNumber();
+          const startDate = new Date();
+          const endDate = new Date(startDate);
+          endDate.setMonth(endDate.getMonth() + product.warrantyDuration);
+
+          const warranty = await Warranty.create({
+            warrantyNumber,
+            sourceType: "SALE",
+            sale: sale._id,
+            product: product._id,
+            productName: product.name,
+            serialNumber: item.serialNumber || null,
+            customer: {
+              name: customer.name,
+              phone: customer.phone,
+              email: customer.email || null
+            },
+            warrantyType: product.warrantyType || "SHOP",
+            durationMonths: product.warrantyDuration,
+            startDate,
+            endDate,
+            status: "ACTIVE",
+            createdBy: req.userId
+          });
+          createdWarranties.push(warranty.warrantyNumber);
+        }
+      }
+    }
+  }
+
   // Populate for response
   await sale.populate("createdBy", "username");
 
   res.status(201).json({
     status: "success",
-    data: { sale }
+    data: { 
+      sale,
+      warrantiesCreated: createdWarranties.length,
+      warranties: createdWarranties
+    }
   });
 });
 

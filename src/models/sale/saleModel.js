@@ -36,6 +36,11 @@ const saleItemSchema = new mongoose.Schema({
   sku: {
     type: String
   },
+  // Serial number/IMEI for warranty tracking
+  serialNumber: {
+    type: String,
+    trim: true
+  },
   quantity: {
     type: Number,
     required: true,
@@ -96,6 +101,22 @@ const saleSchema = new mongoose.Schema({
     type: String,
     unique: true,
     required: true
+  },
+  // Customer info (optional, required for warranty generation)
+  customer: {
+    name: {
+      type: String,
+      trim: true
+    },
+    phone: {
+      type: String,
+      trim: true
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true
+    }
   },
   // Sale items
   items: {

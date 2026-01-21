@@ -42,6 +42,12 @@ const PERMISSION_DESCRIPTIONS = {
   COMPLETE_REPAIR: "Mark repair job as completed",
   COLLECT_REPAIR_PAYMENT: "Collect payment for repairs",
   CANCEL_REPAIR: "Cancel repair jobs",
+  CREATE_WARRANTY: "Create new warranty records",
+  VIEW_WARRANTIES: "View warranty list and details",
+  UPDATE_WARRANTY: "Update warranty information",
+  VOID_WARRANTY: "Void warranties",
+  CREATE_WARRANTY_CLAIM: "Create warranty claims",
+  VIEW_WARRANTY_REPORTS: "View warranty reports and statistics",
   MANAGE_SETTINGS: "Manage system settings",
 };
 

@@ -18,6 +18,7 @@ import productRoutes from './routes/product/productRoutes.js';
 import inventoryRoutes from './routes/inventory/inventoryRoutes.js';
 import saleRoutes from './routes/sale/saleRoutes.js';
 import repairRoutes from './routes/repair/repairRoutes.js';
+import warrantyRoutes from './routes/warranty/warrantyRoutes.js';
 
 const app = express();
 
@@ -60,6 +61,7 @@ app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1/sales", saleRoutes);
 app.use("/api/v1/repairs", repairRoutes);
+app.use("/api/v1/warranties", warrantyRoutes);
 
 // Health check
 app.get("/health", (req, res) => {

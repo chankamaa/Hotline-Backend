@@ -64,6 +64,24 @@ const productSchema = new mongoose.Schema({
     max: [100, "Tax rate cannot exceed 100%"],
     default: 0
   },
+  // Warranty information (default for this product)
+  warrantyDuration: {
+    type: Number,
+    default: 0,
+    min: [0, "Warranty duration cannot be negative"]
+    // Duration in MONTHS (0 = no warranty)
+  },
+  warrantyType: {
+    type: String,
+    enum: ["NONE", "MANUFACTURER", "SHOP", "BOTH"],
+    default: "NONE"
+  },
+  warrantyDescription: {
+    type: String,
+    trim: true,
+    maxlength: [500, "Warranty description cannot exceed 500 characters"]
+    // E.g., "Covers manufacturing defects only"
+  },
   // Product image URL
   image: {
     type: String,
