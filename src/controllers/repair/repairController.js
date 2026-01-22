@@ -8,7 +8,7 @@ import catchAsync from "../../utils/catchAsync.js";
 import AppError from "../../utils/appError.js";
 
 /**
- * Create new repair job
+ * Create new repair job (Technician receives device)
  * POST /api/v1/repairs
  */
 export const createRepair = catchAsync(async (req, res, next) => {
@@ -37,7 +37,7 @@ export const createRepair = catchAsync(async (req, res, next) => {
   // Generate job number
   const jobNumber = await RepairJob.generateJobNumber();
 
-  // Create job
+  // Create job - status is RECEIVED (device received by technician)
   const repairJob = await RepairJob.create({
     jobNumber,
     customer,
@@ -46,22 +46,34 @@ export const createRepair = catchAsync(async (req, res, next) => {
     priority: priority || "NORMAL",
     estimatedCost: estimatedCost || 0,
     advancePayment: advancePayment || 0,
+    advancePaymentReceivedBy: advancePayment > 0 ? req.userId : null,
+    advancePaymentReceivedAt: advancePayment > 0 ? new Date() : null,
     expectedCompletionDate,
-    assignedTo: assignedTo || null,
-    assignedBy: assignedTo ? req.userId : null,
-    assignedAt: assignedTo ? new Date() : null,
-    status: assignedTo ? REPAIR_STATUS.ASSIGNED : REPAIR_STATUS.PENDING,
+    assignedTo: assignedTo || req.userId,  // Default to creator (technician)
+    assignedBy: req.userId,
+    assignedAt: new Date(),
+    receivedBy: req.userId,
+    receivedAt: new Date(),
+    status: REPAIR_STATUS.RECEIVED,
     createdBy: req.userId
   });
 
   await repairJob.populate([
     { path: "createdBy", select: "username" },
-    { path: "assignedTo", select: "username" }
+    { path: "assignedTo", select: "username" },
+    { path: "receivedBy", select: "username" }
   ]);
 
   res.status(201).json({
     status: "success",
-    data: { repairJob }
+    data: { 
+      repairJob,
+      paymentInfo: {
+        estimatedCost: repairJob.estimatedCost,
+        advancePayment: repairJob.advancePayment,
+        estimatedBalance: repairJob.estimatedCost - repairJob.advancePayment
+      }
+    }
   });
 });
 
@@ -261,8 +273,8 @@ export const startRepair = catchAsync(async (req, res, next) => {
     return next(new AppError("You are not assigned to this repair job", 403));
   }
 
-  if (repair.status !== REPAIR_STATUS.ASSIGNED) {
-    return next(new AppError(`Cannot start repair with status: ${repair.status}`, 400));
+  if (repair.status !== REPAIR_STATUS.RECEIVED) {
+    return next(new AppError(`Cannot start repair with status: ${repair.status}. Must be RECEIVED.`, 400));
   }
 
   repair.status = REPAIR_STATUS.IN_PROGRESS;
@@ -270,7 +282,7 @@ export const startRepair = catchAsync(async (req, res, next) => {
 
   res.json({
     status: "success",
-    message: "Repair started",
+    message: "Repair started - status changed to IN_PROGRESS",
     data: { repair }
   });
 });
@@ -293,8 +305,8 @@ export const completeRepair = catchAsync(async (req, res, next) => {
     return next(new AppError("You are not assigned to this repair job", 403));
   }
 
-  if (repair.status !== REPAIR_STATUS.IN_PROGRESS && repair.status !== REPAIR_STATUS.ASSIGNED) {
-    return next(new AppError(`Cannot complete repair with status: ${repair.status}`, 400));
+  if (repair.status !== REPAIR_STATUS.IN_PROGRESS && repair.status !== REPAIR_STATUS.RECEIVED) {
+    return next(new AppError(`Cannot complete repair with status: ${repair.status}. Must be IN_PROGRESS or RECEIVED.`, 400));
   }
 
   // Process parts used
@@ -385,24 +397,40 @@ export const collectPayment = catchAsync(async (req, res, next) => {
   }
 
   if (repair.status !== REPAIR_STATUS.READY) {
-    return next(new AppError(`Cannot collect payment. Status: ${repair.status}`, 400));
+    return next(new AppError(`Cannot collect payment. Status must be READY. Current: ${repair.status}`, 400));
   }
+
+  // Calculate payment breakdown
+  const totalCost = repair.totalCost;
+  const advancePaid = repair.advancePayment;
+  const balanceDue = Math.max(0, totalCost - advancePaid);
+  const amountReceived = amount;
+  const change = Math.max(0, amountReceived - balanceDue);
 
   repair.finalPayment = amount;
   repair.status = REPAIR_STATUS.COMPLETED;
   repair.pickupDate = new Date();
   await repair.save();
 
+  await repair.populate([
+    { path: "assignedTo", select: "username" },
+    { path: "completedBy", select: "username" }
+  ]);
+
   res.json({
     status: "success",
     message: "Payment collected and repair completed",
     data: {
       repair,
-      payment: {
-        totalCost: repair.totalCost,
-        advancePayment: repair.advancePayment,
-        finalPayment: repair.finalPayment,
-        changeGiven: Math.max(0, (repair.advancePayment + repair.finalPayment) - repair.totalCost)
+      paymentBreakdown: {
+        totalCost,
+        laborCost: repair.laborCost,
+        partsTotal: repair.partsTotal,
+        advancePaid,
+        balanceDue,
+        amountReceived,
+        change,
+        paymentStatus: "PAID"
       }
     }
   });
@@ -523,7 +551,7 @@ export const getDashboard = catchAsync(async (req, res, next) => {
     completedToday,
     totalRevenue
   ] = await Promise.all([
-    RepairJob.countDocuments({ status: REPAIR_STATUS.PENDING }),
+    RepairJob.countDocuments({ status: REPAIR_STATUS.RECEIVED }),
     RepairJob.countDocuments({ status: REPAIR_STATUS.IN_PROGRESS }),
     RepairJob.countDocuments({ status: REPAIR_STATUS.READY }),
     RepairJob.countDocuments({ 
@@ -539,11 +567,53 @@ export const getDashboard = catchAsync(async (req, res, next) => {
   res.json({
     status: "success",
     data: {
-      pending,
+      received: pending,  // Changed from pending
       inProgress,
       ready,
       completedToday,
       totalRevenue: totalRevenue[0]?.total || 0
+    }
+  });
+});
+
+/**
+ * Update advance payment for repair job
+ * PUT /api/v1/repairs/:id/advance
+ */
+export const updateAdvancePayment = catchAsync(async (req, res, next) => {
+  const { amount } = req.body;
+
+  if (amount === undefined || amount < 0) {
+    return next(new AppError("Valid advance amount is required", 400));
+  }
+
+  const repair = await RepairJob.findById(req.params.id);
+
+  if (!repair) {
+    return next(new AppError("Repair job not found", 404));
+  }
+
+  if (repair.status === REPAIR_STATUS.COMPLETED || repair.status === REPAIR_STATUS.CANCELLED) {
+    return next(new AppError("Cannot update advance for completed/cancelled job", 400));
+  }
+
+  repair.advancePayment = amount;
+  repair.advancePaymentReceivedBy = req.userId;
+  repair.advancePaymentReceivedAt = new Date();
+  await repair.save();
+
+  await repair.populate("advancePaymentReceivedBy", "username");
+
+  res.json({
+    status: "success",
+    message: "Advance payment updated",
+    data: {
+      repair,
+      paymentInfo: {
+        advancePayment: repair.advancePayment,
+        estimatedCost: repair.estimatedCost,
+        estimatedBalance: repair.estimatedCost - repair.advancePayment
+      }
     }
   });
 });

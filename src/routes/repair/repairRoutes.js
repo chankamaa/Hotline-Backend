@@ -9,6 +9,7 @@ import {
   startRepair,
   completeRepair,
   collectPayment,
+  updateAdvancePayment,
   cancelRepair,
   getAvailableTechnicians,
   getDashboard
@@ -37,6 +38,7 @@ router.get("/:id", authorize(PERMISSIONS.VIEW_REPAIRS, PERMISSIONS.VIEW_OWN_REPA
 router.put("/:id/assign", authorize(PERMISSIONS.ASSIGN_REPAIR), assignTechnician);
 router.put("/:id/start", authorize(PERMISSIONS.UPDATE_REPAIR), startRepair);
 router.put("/:id/complete", authorize(PERMISSIONS.COMPLETE_REPAIR), completeRepair);
+router.put("/:id/advance", authorize(PERMISSIONS.COLLECT_REPAIR_PAYMENT), updateAdvancePayment);
 router.put("/:id/payment", authorize(PERMISSIONS.COLLECT_REPAIR_PAYMENT), collectPayment);
 router.put("/:id/cancel", authorize(PERMISSIONS.CANCEL_REPAIR), cancelRepair);
 

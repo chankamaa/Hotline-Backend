@@ -2,8 +2,7 @@ import mongoose from "mongoose";
 
 // Job status
 export const REPAIR_STATUS = {
-  PENDING: "PENDING",           // Job created, waiting assignment
-  ASSIGNED: "ASSIGNED",         // Assigned to technician
+  RECEIVED: "RECEIVED",         // Device received by technician
   IN_PROGRESS: "IN_PROGRESS",   // Technician working on it
   READY: "READY",               // Repair done, waiting for pickup
   COMPLETED: "COMPLETED",       // Customer paid and collected
@@ -138,7 +137,7 @@ const repairJobSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: Object.values(REPAIR_STATUS),
-    default: REPAIR_STATUS.PENDING
+    default: REPAIR_STATUS.RECEIVED
   },
   priority: {
     type: String,
@@ -182,6 +181,15 @@ const repairJobSchema = new mongoose.Schema({
     ref: "User"
   },
   assignedAt: Date,
+  // Device received tracking
+  receivedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  },
+  receivedAt: {
+    type: Date,
+    default: Date.now
+  },
   // Parts used
   partsUsed: {
     type: [partUsedSchema],
@@ -214,6 +222,11 @@ const repairJobSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  advancePaymentReceivedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  },
+  advancePaymentReceivedAt: Date,
   finalPayment: {
     type: Number,
     default: 0,
