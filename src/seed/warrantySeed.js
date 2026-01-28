@@ -3,7 +3,6 @@ configDotenv();
 import { connectDB } from "../config/db.js";
 import Warranty from "../models/warranty/warrantyModel.js";
 import Product from "../models/product/productModel.js";
-import Sale from "../models/sale/saleModel.js";
 import User from "../models/auth/userModel.js";
 import mongoose from "mongoose";
 
@@ -25,7 +24,7 @@ const products = await Product.find({ warrantyDuration: { $gt: 0 } }).limit(5);
 if (products.length === 0) {
   console.log("⚠️  No products with warranty duration found. Creating sample warranties with first available products...");
   const anyProducts = await Product.find().limit(3);
-  
+
   if (anyProducts.length === 0) {
     console.log("❌ No products found. Please run productSeed.js first.");
     await mongoose.disconnect();
@@ -42,11 +41,11 @@ if (products.length === 0) {
   for (let i = 0; i < Math.min(3, anyProducts.length); i++) {
     const product = anyProducts[i];
     const customer = sampleCustomers[i];
-    
+
     const warrantyNumber = await Warranty.generateWarrantyNumber();
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - Math.floor(Math.random() * 6)); // Random start in past 6 months
-    
+
     const durationMonths = 12; // Default 12 months warranty
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + durationMonths);
@@ -82,11 +81,11 @@ if (products.length === 0) {
   for (let i = 0; i < Math.min(5, products.length); i++) {
     const product = products[i];
     const customer = sampleCustomers[i];
-    
+
     const warrantyNumber = await Warranty.generateWarrantyNumber();
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - Math.floor(Math.random() * 6)); // Random start in past 6 months
-    
+
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + product.warrantyDuration);
 

@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
 const permissionSchema = new mongoose.Schema({
-  code: { 
-    type: String, 
+  code: {
+    type: String,
     unique: true,
     required: true,
     uppercase: true,

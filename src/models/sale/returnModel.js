@@ -153,18 +153,18 @@ returnSchema.virtual("itemCount").get(function() {
 returnSchema.statics.generateReturnNumber = async function() {
   const today = new Date();
   const dateStr = today.toISOString().slice(0, 10).replace(/-/g, "");
-  
+
   // Find the last return number for today
   const lastReturn = await this.findOne({
     returnNumber: { $regex: `^RT-${dateStr}` }
   }).sort({ returnNumber: -1 });
-  
+
   let sequence = 1;
   if (lastReturn) {
     const lastSequence = parseInt(lastReturn.returnNumber.split("-")[2], 10);
     sequence = lastSequence + 1;
   }
-  
+
   return `RT-${dateStr}-${sequence.toString().padStart(4, "0")}`;
 };
 

@@ -1,4 +1,4 @@
-import RepairJob, { REPAIR_STATUS, PAYMENT_STATUS } from "../../models/repair/repairJobModel.js";
+import RepairJob, { REPAIR_STATUS } from "../../models/repair/repairJobModel.js";
 import User from "../../models/auth/userModel.js";
 import Role from "../../models/auth/roleModel.js";
 import Product from "../../models/product/productModel.js";
@@ -66,7 +66,7 @@ export const createRepair = catchAsync(async (req, res, next) => {
 
   res.status(201).json({
     status: "success",
-    data: { 
+    data: {
       repairJob,
       paymentInfo: {
         estimatedCost: repairJob.estimatedCost,
@@ -321,7 +321,7 @@ export const completeRepair = catchAsync(async (req, res, next) => {
       // Check stock
       const stock = await Stock.findOne({ product: part.productId });
       const currentQty = stock ? stock.quantity : 0;
-      
+
       if (currentQty < part.quantity) {
         return next(new AppError(
           `Insufficient stock for ${product.name}. Available: ${currentQty}`,
@@ -499,7 +499,7 @@ export const cancelRepair = catchAsync(async (req, res, next) => {
 export const getAvailableTechnicians = catchAsync(async (req, res, next) => {
   // Find TECHNICIAN role
   const techRole = await Role.findOne({ name: "TECHNICIAN" });
-  
+
   if (!techRole) {
     return res.json({
       status: "success",
@@ -554,7 +554,7 @@ export const getDashboard = catchAsync(async (req, res, next) => {
     RepairJob.countDocuments({ status: REPAIR_STATUS.RECEIVED }),
     RepairJob.countDocuments({ status: REPAIR_STATUS.IN_PROGRESS }),
     RepairJob.countDocuments({ status: REPAIR_STATUS.READY }),
-    RepairJob.countDocuments({ 
+    RepairJob.countDocuments({
       status: REPAIR_STATUS.COMPLETED,
       pickupDate: { $gte: today }
     }),

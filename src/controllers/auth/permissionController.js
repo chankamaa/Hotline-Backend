@@ -1,5 +1,6 @@
 import Permission from "../../models/auth/permissionModel.js";
 import catchAsync from "../../utils/catchAsync.js";
+import AppError from "../../utils/appError.js";
 
 /**
  * Get all permissions
@@ -10,7 +11,7 @@ export const getPermissions = catchAsync(async (req, res, next) => {
 
   // Filter by category if provided
   const filter = category ? { category: category.toUpperCase() } : {};
-  
+
   const permissions = await Permission.find(filter).sort({ category: 1, code: 1 });
 
   // Group permissions by category

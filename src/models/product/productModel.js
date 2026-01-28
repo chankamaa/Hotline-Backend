@@ -168,11 +168,11 @@ productSchema.index({ barcode: 1 });
 // Virtual to check if offer is currently active
 productSchema.virtual("hasActiveOffer").get(function() {
   if (!this.offer || !this.offer.isActive) return false;
-  
+
   const now = new Date();
   const startValid = !this.offer.startDate || now >= new Date(this.offer.startDate);
   const endValid = !this.offer.endDate || now <= new Date(this.offer.endDate);
-  
+
   return startValid && endValid && this.offer.value > 0;
 });
 
@@ -181,7 +181,7 @@ productSchema.virtual("effectivePrice").get(function() {
   if (!this.hasActiveOffer) {
     return this.sellingPrice;
   }
-  
+
   if (this.offer.type === "PERCENTAGE") {
     const discount = this.sellingPrice * (this.offer.value / 100);
     return Math.round((this.sellingPrice - discount) * 100) / 100;
@@ -230,9 +230,9 @@ productSchema.statics.quickSearch = async function(query) {
   }
 
   // Search by exact barcode first
-  const byBarcode = await this.findOne({ 
-    barcode: query, 
-    isActive: true 
+  const byBarcode = await this.findOne({
+    barcode: query,
+    isActive: true
   }).populate(["category", "subcategory"]);
 
   if (byBarcode) {
@@ -240,9 +240,9 @@ productSchema.statics.quickSearch = async function(query) {
   }
 
   // Search by exact SKU
-  const bySku = await this.findOne({ 
-    sku: query.toUpperCase(), 
-    isActive: true 
+  const bySku = await this.findOne({
+    sku: query.toUpperCase(),
+    isActive: true
   }).populate(["category", "subcategory"]);
 
   if (bySku) {
@@ -261,8 +261,8 @@ productSchema.statics.quickSearch = async function(query) {
       }
     ]
   })
-  .populate(["category", "subcategory"])
-  .limit(10);
+    .populate(["category", "subcategory"])
+    .limit(10);
 
   return results;
 };

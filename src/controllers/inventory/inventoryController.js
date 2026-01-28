@@ -151,7 +151,7 @@ export const adjustStock = catchAsync(async (req, res, next) => {
 
   // Determine if this is an addition or reduction
   const isAddition = ["ADDITION", "PURCHASE", "RETURN", "TRANSFER_IN", "CORRECTION"].includes(type);
-  
+
   // For CORRECTION type, we need to determine direction from the data
   let newQuantity;
   if (type === "CORRECTION") {

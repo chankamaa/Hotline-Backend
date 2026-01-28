@@ -43,7 +43,7 @@ stockSchema.methods.getStockValue = async function() {
   if (!this.populated("product")) {
     await this.populate("product", "costPrice sellingPrice name");
   }
-  
+
   if (this.product && this.product.costPrice) {
     return {
       costValue: this.quantity * this.product.costPrice,
@@ -56,16 +56,16 @@ stockSchema.methods.getStockValue = async function() {
 // Static method to get low stock products
 stockSchema.statics.getLowStock = async function() {
   const Product = mongoose.model("Product");
-  
+
   // Get all products with their min stock levels
   const products = await Product.find({ isActive: true }).select("_id minStockLevel name");
-  
+
   const lowStockItems = [];
-  
+
   for (const product of products) {
     const stock = await this.findOne({ product: product._id });
     const currentQty = stock ? stock.quantity : 0;
-    
+
     if (currentQty <= product.minStockLevel) {
       lowStockItems.push({
         product: {
@@ -78,21 +78,21 @@ stockSchema.statics.getLowStock = async function() {
       });
     }
   }
-  
+
   return lowStockItems.sort((a, b) => b.shortfall - a.shortfall);
 };
 
 // Static method to get or create stock for a product
 stockSchema.statics.getOrCreate = async function(productId) {
   let stock = await this.findOne({ product: productId });
-  
+
   if (!stock) {
     stock = await this.create({
       product: productId,
       quantity: 0
     });
   }
-  
+
   return stock;
 };
 

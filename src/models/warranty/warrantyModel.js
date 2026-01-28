@@ -88,7 +88,7 @@ const warrantySchema = new mongoose.Schema({
     unique: true,
     required: true
   },
-  
+
   // Source - where this warranty came from
   sourceType: {
     type: String,
@@ -103,7 +103,7 @@ const warrantySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "RepairJob"
   },
-  
+
   // Product Information
   product: {
     type: mongoose.Schema.Types.ObjectId,
@@ -118,13 +118,13 @@ const warrantySchema = new mongoose.Schema({
     type: String,
     trim: true  // Device IMEI/Serial (optional)
   },
-  
+
   // Customer Information
   customer: {
     type: warrantyCustomerSchema,
     required: true
   },
-  
+
   // Warranty Details
   warrantyType: {
     type: String,
@@ -145,20 +145,20 @@ const warrantySchema = new mongoose.Schema({
     type: Date,
     required: true
   },
-  
+
   // Status
   status: {
     type: String,
     enum: Object.values(WARRANTY_STATUS),
     default: WARRANTY_STATUS.ACTIVE
   },
-  
+
   // Claims History
   claims: {
     type: [claimSchema],
     default: []
   },
-  
+
   // Void Information
   voidedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -170,14 +170,14 @@ const warrantySchema = new mongoose.Schema({
     trim: true,
     maxlength: 500
   },
-  
+
   // Notes
   notes: {
     type: String,
     trim: true,
     maxlength: 1000
   },
-  
+
   // Tracking
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -230,17 +230,17 @@ warrantySchema.pre("save", function() {
 warrantySchema.statics.generateWarrantyNumber = async function() {
   const today = new Date();
   const dateStr = today.toISOString().slice(0, 10).replace(/-/g, "");
-  
+
   const lastWarranty = await this.findOne({
     warrantyNumber: { $regex: `^WR-${dateStr}` }
   }).sort({ warrantyNumber: -1 });
-  
+
   let sequence = 1;
   if (lastWarranty) {
     const lastSequence = parseInt(lastWarranty.warrantyNumber.split("-")[2], 10);
     sequence = lastSequence + 1;
   }
-  
+
   return `WR-${dateStr}-${sequence.toString().padStart(4, "0")}`;
 };
 
@@ -248,18 +248,18 @@ warrantySchema.statics.generateWarrantyNumber = async function() {
 warrantySchema.statics.generateClaimNumber = async function() {
   const today = new Date();
   const dateStr = today.toISOString().slice(0, 10).replace(/-/g, "");
-  
+
   // Count all claims across all warranties today
   const todayStart = new Date(today);
   todayStart.setHours(0, 0, 0, 0);
-  
+
   const todayEnd = new Date(today);
   todayEnd.setHours(23, 59, 59, 999);
-  
+
   const warranties = await this.find({
     "claims.claimDate": { $gte: todayStart, $lte: todayEnd }
   });
-  
+
   let totalClaimsToday = 0;
   warranties.forEach(w => {
     w.claims.forEach(c => {
@@ -268,7 +268,7 @@ warrantySchema.statics.generateClaimNumber = async function() {
       }
     });
   });
-  
+
   return `CLM-${dateStr}-${(totalClaimsToday + 1).toString().padStart(4, "0")}`;
 };
 
@@ -298,7 +298,7 @@ warrantySchema.statics.updateExpiredWarranties = async function() {
 warrantySchema.statics.getExpiringSoon = async function(days = 30) {
   const now = new Date();
   const futureDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-  
+
   return this.find({
     status: WARRANTY_STATUS.ACTIVE,
     endDate: { $gte: now, $lte: futureDate }
@@ -312,16 +312,16 @@ warrantySchema.methods.checkValidity = function() {
   if (this.status === WARRANTY_STATUS.VOID) {
     return { valid: false, reason: "Warranty has been voided" };
   }
-  
+
   const now = new Date();
   const endDate = new Date(this.endDate);
-  
+
   if (now > endDate) {
     return { valid: false, reason: "Warranty has expired" };
   }
-  
+
   const daysRemaining = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
-  
+
   return {
     valid: true,
     daysRemaining,

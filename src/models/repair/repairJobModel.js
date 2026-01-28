@@ -282,17 +282,17 @@ repairJobSchema.virtual("balanceDue").get(function() {
 repairJobSchema.statics.generateJobNumber = async function() {
   const today = new Date();
   const dateStr = today.toISOString().slice(0, 10).replace(/-/g, "");
-  
+
   const lastJob = await this.findOne({
     jobNumber: { $regex: `^RJ-${dateStr}` }
   }).sort({ jobNumber: -1 });
-  
+
   let sequence = 1;
   if (lastJob) {
     const lastSequence = parseInt(lastJob.jobNumber.split("-")[2], 10);
     sequence = lastSequence + 1;
   }
-  
+
   return `RJ-${dateStr}-${sequence.toString().padStart(4, "0")}`;
 };
 
@@ -300,10 +300,10 @@ repairJobSchema.statics.generateJobNumber = async function() {
 repairJobSchema.pre("save", async function() {
   // Calculate parts total
   this.partsTotal = this.partsUsed.reduce((sum, part) => sum + part.total, 0);
-  
+
   // Calculate total cost
   this.totalCost = this.laborCost + this.partsTotal;
-  
+
   // Update payment status
   const totalPaid = this.advancePayment + this.finalPayment;
   if (totalPaid >= this.totalCost && this.totalCost > 0) {

@@ -63,10 +63,10 @@ for (const cat of categoriesData) {
       isActive: true,
     });
 
-    subcategoryMap[sub] = { 
-      id: subCat._id, 
-      parentId: parent._id, 
-      parentName: cat.name 
+    subcategoryMap[sub] = {
+      id: subCat._id,
+      parentId: parent._id,
+      parentName: cat.name
     };
     console.log(`  └─ Subcategory: ${sub}`);
   }
@@ -345,9 +345,9 @@ for (const p of productsData) {
   count++;
 }
 
-console.log(`\n✅ Seed completed`);
-console.log(`📂 Main Categories: 5`);
-console.log(`📂 Subcategories: 15`);
+console.log("\n✅ Seed completed");
+console.log("📂 Main Categories: 5");
+console.log("📂 Subcategories: 15");
 console.log(`📦 Products: ${count}`);
 
 await mongoose.disconnect();

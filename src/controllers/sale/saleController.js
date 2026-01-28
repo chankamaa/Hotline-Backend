@@ -11,13 +11,13 @@ import AppError from "../../utils/appError.js";
  * POST /api/v1/sales
  */
 export const createSale = catchAsync(async (req, res, next) => {
-  const { 
-    items, 
-    payments, 
-    discountType, 
-    discountValue, 
+  const {
+    items,
+    payments,
+    discountType,
+    discountValue,
     customer,
-    notes 
+    notes
   } = req.body;
 
   // Validate items
@@ -43,10 +43,10 @@ export const createSale = catchAsync(async (req, res, next) => {
     // Check stock
     const stock = await Stock.findOne({ product: item.productId });
     const currentQty = stock ? stock.quantity : 0;
-    
+
     if (currentQty < item.quantity) {
       return next(new AppError(
-        `Insufficient stock for ${product.name}. Available: ${currentQty}, Requested: ${item.quantity}`, 
+        `Insufficient stock for ${product.name}. Available: ${currentQty}, Requested: ${item.quantity}`,
         400
       ));
     }
@@ -56,7 +56,7 @@ export const createSale = catchAsync(async (req, res, next) => {
     const quantity = item.quantity;
     const taxRate = product.taxRate || 0;
     const itemDiscount = item.discount || 0;
-    
+
     const itemSubtotal = unitPrice * quantity;
     const taxAmount = (itemSubtotal - itemDiscount) * (taxRate / 100);
     const itemTotal = itemSubtotal - itemDiscount + taxAmount;
@@ -94,7 +94,7 @@ export const createSale = catchAsync(async (req, res, next) => {
   // Process payments
   let amountPaid = 0;
   const processedPayments = [];
-  
+
   if (payments && Array.isArray(payments)) {
     for (const payment of payments) {
       if (payment.amount > 0) {
@@ -204,7 +204,7 @@ export const createSale = catchAsync(async (req, res, next) => {
 
   res.status(201).json({
     status: "success",
-    data: { 
+    data: {
       sale,
       warrantiesCreated: createdWarranties.length,
       warranties: createdWarranties
@@ -217,13 +217,13 @@ export const createSale = catchAsync(async (req, res, next) => {
  * GET /api/v1/sales
  */
 export const getSales = catchAsync(async (req, res, next) => {
-  const { 
-    status, 
-    startDate, 
-    endDate, 
+  const {
+    status,
+    startDate,
+    endDate,
     createdBy,
-    page = 1, 
-    limit = 20 
+    page = 1,
+    limit = 20
   } = req.query;
 
   // Build query
@@ -380,7 +380,7 @@ export const voidSale = catchAsync(async (req, res, next) => {
  */
 export const getDailySummary = catchAsync(async (req, res, next) => {
   const { date } = req.query;
-  
+
   const targetDate = date ? new Date(date) : new Date();
   const summary = await Sale.getDailySummary(targetDate);
 
@@ -403,7 +403,7 @@ export const getSalesReport = catchAsync(async (req, res, next) => {
 
   const start = new Date(startDate);
   start.setHours(0, 0, 0, 0);
-  
+
   const end = new Date(endDate);
   end.setHours(23, 59, 59, 999);
 

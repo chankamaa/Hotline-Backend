@@ -5,8 +5,6 @@ import mongoose from "mongoose";
 import { connectDB } from "../config/db.js";
 import Return, { RETURN_TYPES, RETURN_STATUS } from "../models/sale/returnModel.js";
 import Sale from "../models/sale/saleModel.js";
-import Stock from "../models/inventory/stockModel.js";
-import StockAdjustment, { ADJUSTMENT_TYPES } from "../models/inventory/stockAdjustmentModel.js";
 import User from "../models/auth/userModel.js";
 
 await connectDB();
@@ -39,9 +37,9 @@ const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
 if (sales[0] && sales[0].items.length > 0) {
   const sale = sales[0];
   const item = sale.items[0];
-  
+
   const returnNumber = await Return.generateReturnNumber();
-  
+
   await Return.create({
     returnNumber,
     originalSale: sale._id,
@@ -61,7 +59,7 @@ if (sales[0] && sales[0].items.length > 0) {
     createdBy: admin._id,
     createdAt: today
   });
-  
+
   console.log(`✓ Return ${returnNumber}: REFUND - Rs.${item.unitPrice} (${item.productName})`);
 }
 
@@ -69,11 +67,11 @@ if (sales[0] && sales[0].items.length > 0) {
 if (sales[1] && sales[1].items.length > 0) {
   const sale = sales[1];
   const item = sale.items[0];
-  
+
   const returnNumber = await Return.generateReturnNumber();
   const returnQty = Math.min(2, item.quantity);
   const refundAmount = item.unitPrice * returnQty;
-  
+
   await Return.create({
     returnNumber,
     originalSale: sale._id,
@@ -93,7 +91,7 @@ if (sales[1] && sales[1].items.length > 0) {
     createdBy: admin._id,
     createdAt: yesterday
   });
-  
+
   console.log(`✓ Return ${returnNumber}: PARTIAL REFUND - ${returnQty}x ${item.productName}`);
 }
 
@@ -101,9 +99,9 @@ if (sales[1] && sales[1].items.length > 0) {
 if (sales[2] && sales[2].items.length > 0) {
   const sale = sales[2];
   const item = sale.items[0];
-  
+
   const returnNumber = await Return.generateReturnNumber();
-  
+
   await Return.create({
     returnNumber,
     originalSale: sale._id,
@@ -124,11 +122,11 @@ if (sales[2] && sales[2].items.length > 0) {
     createdBy: admin._id,
     createdAt: yesterday
   });
-  
+
   console.log(`✓ Return ${returnNumber}: EXCHANGE - ${item.productName} (Customer paid Rs.5000 extra)`);
 }
 
-console.log(`\n✅ Created 3 return scenarios`);
+console.log("\n✅ Created 3 return scenarios");
 
 await mongoose.disconnect();
 console.log("🔌 DB disconnected\n");

@@ -3,16 +3,16 @@ import validator from "validator";
 import bcrypt from "bcrypt";
 
 const userSchema = new mongoose.Schema({
-  username: { 
-    type: String, 
-    required: true, 
-    unique: [true,'Please provide a unique username'],
+  username: {
+    type: String,
+    required: true,
+    unique: [true,"Please provide a unique username"],
     trim: true,
     minlength: 3
   },
   email: {
     type: String,
-    unique: [true,'Please provide a unique email'],
+    unique: [true,"Please provide a unique email"],
     sparse: true, // Allows null values while maintaining uniqueness
     lowercase: true,
     trim: true,
@@ -21,10 +21,10 @@ const userSchema = new mongoose.Schema({
       message: "Please provide a valid email address"
     }
   },
-  password: { 
-    type: String, 
-    required: [true,'Please provide a password'],  
-    minlength: [8,'Please provide a password with minimum length of 8 characters'],
+  password: {
+    type: String,
+    required: [true,"Please provide a password"],
+    minlength: [8,"Please provide a password with minimum length of 8 characters"],
     select: false // Don't include password in queries by default
   },
 
@@ -33,8 +33,8 @@ const userSchema = new mongoose.Schema({
     // Only required when creating new user or updating password
     required: [function() {
       // Required if: new document OR password is being modified
-      return this.isNew || this.isModified('password');
-    }, 'Please provide a password confirmation'],
+      return this.isNew || this.isModified("password");
+    }, "Please provide a password confirmation"],
     validate: {
       validator: function(v) {
         // Only validate if passwordConfirm is provided
@@ -45,27 +45,27 @@ const userSchema = new mongoose.Schema({
     }
   },
 
- // Roles assigned to this user
-roles: {
-  type: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Role"
-  }],
-  validate: {
-    validator: function(v) {
-      return v && v.length > 0;
-    },
-    message: 'Please provide at least one role'
-  }
-},
+  // Roles assigned to this user
+  roles: {
+    type: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Role"
+    }],
+    validate: {
+      validator: function(v) {
+        return v && v.length > 0;
+      },
+      message: "Please provide at least one role"
+    }
+  },
   // Direct permission overrides (Admin can assign extra permissions or deny specific ones)
   directPermissions: [{
     permission: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Permission"
     },
-    type: { 
-      type: String, 
+    type: {
+      type: String,
       enum: ["ALLOW", "DENY"],
       required: true
     }
@@ -93,8 +93,8 @@ roles: {
 });
 
 // works on create and save methods
-userSchema.pre('save', async function() {
-  if (!this.isModified('password')) return;
+userSchema.pre("save", async function() {
+  if (!this.isModified("password")) return;
 
   this.password = await bcrypt.hash(this.password, 12);
   this.passwordConfirm = undefined;
@@ -106,14 +106,14 @@ userSchema.methods.hasPermission = async function(permissionCode) {
   if (this.isSuperAdmin) return true;
 
   // Populate if not already populated
-  if (!this.populated('roles')) {
+  if (!this.populated("roles")) {
     await this.populate({
-      path: 'roles',
-      populate: { path: 'permissions' }
+      path: "roles",
+      populate: { path: "permissions" }
     });
   }
-  if (!this.populated('directPermissions.permission')) {
-    await this.populate('directPermissions.permission');
+  if (!this.populated("directPermissions.permission")) {
+    await this.populate("directPermissions.permission");
   }
 
   // Check direct permission override first
@@ -126,7 +126,7 @@ userSchema.methods.hasPermission = async function(permissionCode) {
   }
 
   // Check role permissions
-  const rolePerms = this.roles.flatMap(r => 
+  const rolePerms = this.roles.flatMap(r =>
     r.permissions ? r.permissions.map(p => p.code) : []
   );
 
@@ -140,14 +140,14 @@ userSchema.methods.getEffectivePermissions = async function() {
   }
 
   // Populate if needed
-  if (!this.populated('roles')) {
+  if (!this.populated("roles")) {
     await this.populate({
-      path: 'roles',
-      populate: { path: 'permissions' }
+      path: "roles",
+      populate: { path: "permissions" }
     });
   }
-  if (!this.populated('directPermissions.permission')) {
-    await this.populate('directPermissions.permission');
+  if (!this.populated("directPermissions.permission")) {
+    await this.populate("directPermissions.permission");
   }
 
   // Get all role permissions

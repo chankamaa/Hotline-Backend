@@ -121,12 +121,12 @@ promotionSchema.index({ priority: -1 });
 // Virtual to check if currently active
 promotionSchema.virtual("isCurrentlyActive").get(function() {
   if (!this.isActive) return false;
-  
+
   const now = new Date();
   const startValid = now >= new Date(this.startDate);
   const endValid = now <= new Date(this.endDate);
   const hasUsage = this.usageLimit === null || this.usedCount < this.usageLimit;
-  
+
   return startValid && endValid && hasUsage;
 });
 
@@ -162,14 +162,20 @@ promotionSchema.statics.findForProduct = async function(productId, categoryId) {
     isActive: true,
     startDate: { $lte: now },
     endDate: { $gte: now },
-    $or: [
-      { usageLimit: null },
-      { $expr: { $lt: ["$usedCount", "$usageLimit"] } }
-    ],
-    $or: [
-      { targetType: TARGET_TYPES.ALL },
-      { targetType: TARGET_TYPES.PRODUCT, targetProducts: productId },
-      { targetType: TARGET_TYPES.CATEGORY, targetCategories: categoryId }
+    $and: [
+      {
+        $or: [
+          { usageLimit: null },
+          { $expr: { $lt: ["$usedCount", "$usageLimit"] } }
+        ]
+      },
+      {
+        $or: [
+          { targetType: TARGET_TYPES.ALL },
+          { targetType: TARGET_TYPES.PRODUCT, targetProducts: productId },
+          { targetType: TARGET_TYPES.CATEGORY, targetCategories: categoryId }
+        ]
+      }
     ]
   })
     .sort({ priority: -1 });
@@ -178,12 +184,12 @@ promotionSchema.statics.findForProduct = async function(productId, categoryId) {
 // Instance method to calculate discount for an amount
 promotionSchema.methods.calculateDiscount = function(amount, quantity = 1) {
   if (!this.isCurrentlyActive) return 0;
-  
+
   // Check minimum purchase
   if (amount < this.minPurchase) return 0;
-  
+
   let discount = 0;
-  
+
   switch (this.type) {
     case PROMOTION_TYPES.PERCENTAGE:
       discount = amount * (this.value / 100);
@@ -198,12 +204,12 @@ promotionSchema.methods.calculateDiscount = function(amount, quantity = 1) {
       }
       break;
   }
-  
+
   // Apply max discount cap
   if (this.maxDiscount !== null && discount > this.maxDiscount) {
     discount = this.maxDiscount;
   }
-  
+
   return Math.round(discount * 100) / 100;
 };
 

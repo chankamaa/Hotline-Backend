@@ -95,7 +95,7 @@ export const updateRole = catchAsync(async (req, res, next) => {
   // Update fields
   if (name) role.name = name.toUpperCase();
   if (description !== undefined) role.description = description;
-  
+
   // Update permissions if provided
   if (permissions !== undefined) {
     if (permissions.length > 0) {
@@ -122,7 +122,7 @@ export const updateRole = catchAsync(async (req, res, next) => {
  */
 export const deleteRole = catchAsync(async (req, res, next) => {
   const role = await Role.findById(req.params.id);
-  
+
   if (!role) {
     return next(new AppError("Role not found", 404));
   }

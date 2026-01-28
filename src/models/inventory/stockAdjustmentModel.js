@@ -89,21 +89,21 @@ stockAdjustmentSchema.virtual("change").get(function() {
 // Static method to get adjustment history for a product
 stockAdjustmentSchema.statics.getHistory = async function(productId, options = {}) {
   const { limit = 50, page = 1, type, startDate, endDate } = options;
-  
+
   const query = { product: productId };
-  
+
   if (type) {
     query.type = type;
   }
-  
+
   if (startDate || endDate) {
     query.createdAt = {};
     if (startDate) query.createdAt.$gte = new Date(startDate);
     if (endDate) query.createdAt.$lte = new Date(endDate);
   }
-  
+
   const skip = (page - 1) * limit;
-  
+
   const [adjustments, total] = await Promise.all([
     this.find(query)
       .populate("createdBy", "username")
@@ -113,7 +113,7 @@ stockAdjustmentSchema.statics.getHistory = async function(productId, options = {
       .limit(limit),
     this.countDocuments(query)
   ]);
-  
+
   return {
     adjustments,
     pagination: {

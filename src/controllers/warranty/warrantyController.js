@@ -182,7 +182,7 @@ export const getWarrantyByNumber = catchAsync(async (req, res, next) => {
 
   res.json({
     status: "success",
-    data: { 
+    data: {
       warranty,
       validity
     }
@@ -398,9 +398,9 @@ export const getExpiringSoon = catchAsync(async (req, res, next) => {
   res.json({
     status: "success",
     results: warranties.length,
-    data: { 
+    data: {
       expiringIn: `${days} days`,
-      warranties 
+      warranties
     }
   });
 });

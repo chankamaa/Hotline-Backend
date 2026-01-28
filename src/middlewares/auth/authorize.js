@@ -3,7 +3,7 @@ import User from "../../models/auth/userModel.js";
 /**
  * Authorization middleware
  * Checks if user has required permission(s)
- * 
+ *
  * @param {string|string[]} permissionCode - Required permission code(s)
  * @param {object} options - Options for authorization
  * @param {boolean} options.requireAll - If true and multiple permissions, require ALL. Default: false (any)
@@ -35,7 +35,7 @@ export const authorize = (permissionCode, options = {}) => {
 
       // Check each required permission
       const permissionResults = [];
-      
+
       for (const permCode of requiredPermissions) {
         // 1. Check direct permission override first
         const directPerm = user.directPermissions.find(
@@ -65,7 +65,7 @@ export const authorize = (permissionCode, options = {}) => {
 
       // Determine if access should be granted
       const allowedCount = permissionResults.filter(r => r.allowed).length;
-      const accessGranted = requireAll 
+      const accessGranted = requireAll
         ? allowedCount === requiredPermissions.length
         : allowedCount > 0;
 
@@ -73,7 +73,7 @@ export const authorize = (permissionCode, options = {}) => {
         const missingPerms = permissionResults
           .filter(r => !r.allowed)
           .map(r => r.code);
-        
+
         return res.status(403).json({
           status: "error",
           message: "Access denied",
@@ -92,7 +92,7 @@ export const authorize = (permissionCode, options = {}) => {
 /**
  * Role-based authorization middleware
  * Checks if user has one of the required roles
- * 
+ *
  * @param {string|string[]} roleName - Required role name(s)
  */
 export const authorizeRole = (roleName) => {

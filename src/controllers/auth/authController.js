@@ -34,14 +34,14 @@ export const login = catchAsync(async (req, res, next) => {
 
   // Find user with password
   const user = await User.findOne({ username, isActive: true }).select("+password");
-  
+
   if (!user) {
     return next(new AppError("Invalid credentials", 401));
   }
 
   // Verify password
   const isPasswordValid = await bcrypt.compare(password, user.password);
-  
+
   if (!isPasswordValid) {
     return next(new AppError("Invalid credentials", 401));
   }
@@ -91,7 +91,7 @@ export const refreshToken = catchAsync(async (req, res, next) => {
 
   // Find user with this refresh token
   const user = await User.findById(decoded.userId).select("+refreshToken");
-  
+
   if (!user || user.refreshToken !== token) {
     return next(new AppError("Invalid refresh token", 401));
   }

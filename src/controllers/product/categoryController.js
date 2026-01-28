@@ -26,11 +26,11 @@ export const createCategory = catchAsync(async (req, res, next) => {
   }
 
   // Check for duplicate name under same parent
-  const existingCategory = await Category.findOne({ 
-    name: { $regex: new RegExp(`^${name}$`, 'i') }, 
-    parent: parent || null 
+  const existingCategory = await Category.findOne({
+    name: { $regex: new RegExp(`^${name}$`, "i") },
+    parent: parent || null
   });
-  
+
   if (existingCategory) {
     return next(new AppError("Category with this name already exists at this level", 400));
   }
@@ -73,7 +73,7 @@ export const getCategories = catchAsync(async (req, res, next) => {
 
   // Build query
   const query = {};
-  
+
   if (!includeInactive || includeInactive !== "true") {
     query.isActive = true;
   }
@@ -81,7 +81,7 @@ export const getCategories = catchAsync(async (req, res, next) => {
   // Filter: only root/main categories (no parent)
   if (rootOnly === "true") {
     query.parent = null;
-  } 
+  }
   // Filter: subcategories of a specific parent
   else if (parent) {
     query.parent = parent;
@@ -120,7 +120,7 @@ export const getCategory = catchAsync(async (req, res, next) => {
 
   res.json({
     status: "success",
-    data: { 
+    data: {
       category: {
         ...category.toObject(),
         fullPath
@@ -137,7 +137,7 @@ export const updateCategory = catchAsync(async (req, res, next) => {
   const { name, description, parent, isActive } = req.body;
 
   const category = await Category.findById(req.params.id);
-  
+
   if (!category) {
     return next(new AppError("Category not found", 404));
   }
@@ -145,12 +145,12 @@ export const updateCategory = catchAsync(async (req, res, next) => {
   // If changing name, check for duplicates under same parent
   if (name && name !== category.name) {
     const targetParent = parent !== undefined ? parent : category.parent;
-    const existingCategory = await Category.findOne({ 
-      name: { $regex: new RegExp(`^${name}$`, 'i') }, 
+    const existingCategory = await Category.findOne({
+      name: { $regex: new RegExp(`^${name}$`, "i") },
       parent: targetParent,
       _id: { $ne: category._id }
     });
-    
+
     if (existingCategory) {
       return next(new AppError("Category with this name already exists at this level", 400));
     }
@@ -201,7 +201,7 @@ export const updateCategory = catchAsync(async (req, res, next) => {
  */
 export const deleteCategory = catchAsync(async (req, res, next) => {
   const category = await Category.findById(req.params.id);
-  
+
   if (!category) {
     return next(new AppError("Category not found", 404));
   }
@@ -210,7 +210,7 @@ export const deleteCategory = catchAsync(async (req, res, next) => {
   const subcategories = await Category.find({ parent: category._id, isActive: true });
   if (subcategories.length > 0) {
     return next(new AppError(
-      `Cannot delete category with ${subcategories.length} active subcategories. Delete or move subcategories first.`, 
+      `Cannot delete category with ${subcategories.length} active subcategories. Delete or move subcategories first.`,
       400
     ));
   }

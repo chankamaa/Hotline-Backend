@@ -146,12 +146,12 @@ export const createReturn = catchAsync(async (req, res, next) => {
 /**
  * Create an exchange (return old items + buy new items)
  * POST /api/v1/returns/exchange
- * Body: { 
- *   originalSaleId, 
- *   returnItems: [{ saleItemId, quantity }], 
+ * Body: {
+ *   originalSaleId,
+ *   returnItems: [{ saleItemId, quantity }],
  *   newItems: [{ productId, quantity, unitPrice? }],
  *   payments: [{ method, amount }],
- *   reason 
+ *   reason
  * }
  */
 export const createExchange = catchAsync(async (req, res, next) => {
@@ -229,7 +229,7 @@ export const createExchange = catchAsync(async (req, res, next) => {
     // Check stock
     const stock = await Stock.findOne({ product: item.productId });
     const currentQty = stock ? stock.quantity : 0;
-    
+
     if (currentQty < item.quantity) {
       return next(new AppError(
         `Insufficient stock for ${product.name}. Available: ${currentQty}, Requested: ${item.quantity}`,
@@ -266,7 +266,7 @@ export const createExchange = catchAsync(async (req, res, next) => {
   // Process payments for the difference (if amount due > 0)
   let amountPaid = 0;
   const processedPayments = [];
-  
+
   if (payments && Array.isArray(payments)) {
     for (const payment of payments) {
       if (payment.amount > 0) {

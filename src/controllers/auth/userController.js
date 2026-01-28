@@ -1,7 +1,6 @@
 import User from "../../models/auth/userModel.js";
 import Role from "../../models/auth/roleModel.js";
 import Permission from "../../models/auth/permissionModel.js";
-import bcrypt from "bcrypt";
 import catchAsync from "../../utils/catchAsync.js";
 import AppError from "../../utils/appError.js";
 
@@ -28,7 +27,7 @@ export const createUser = catchAsync(async (req, res, next) => {
   if (roles) {
     // Handle both single string and array of role IDs
     const roleArray = Array.isArray(roles) ? roles : [roles];
-    
+
     if (roleArray.length > 0) {
       const foundRoles = await Role.find({ _id: { $in: roleArray } });
       if (foundRoles.length !== roleArray.length) {
@@ -119,7 +118,7 @@ export const updateUser = catchAsync(async (req, res, next) => {
   if (username) user.username = username;
   if (email) user.email = email;
   if (typeof isActive === "boolean") user.isActive = isActive;
-  
+
   // Handle password update - let the model's pre-save hook do the hashing
   if (password) {
     if (!passwordConfirm) {
@@ -151,7 +150,7 @@ export const updateUser = catchAsync(async (req, res, next) => {
  */
 export const deleteUser = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.params.id);
-  
+
   if (!user) {
     return next(new AppError("User not found", 404));
   }
@@ -229,7 +228,7 @@ export const assignDirectPermissions = catchAsync(async (req, res, next) => {
   // Validate permissions
   const permIds = permissions.map(p => p.permissionId);
   const foundPerms = await Permission.find({ _id: { $in: permIds } });
-  
+
   if (foundPerms.length !== permIds.length) {
     return next(new AppError("One or more invalid permission IDs", 400));
   }

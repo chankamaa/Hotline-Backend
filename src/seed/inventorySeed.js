@@ -32,22 +32,22 @@ const stockQuantities = {
   "IP15PRO": 5,
   "SGS24": 8,
   "OP12": 10,
-  
+
   // Accessories - High stock
   "IP-COVER": 100,
   "TEMP-GLASS": 200,
   "CAR-HOLDER": 50,
-  
+
   // Audio
   "AIRPODS2": 15,
   "WIRED-EAR": 150,
   "JBLGO3": 20,
-  
+
   // Chargers & Power
   "20W-CHARGER": 80,
   "USBC-CABLE": 300,
   "PB-10000": 40,
-  
+
   // Repair Parts
   "IP-BATT": 30,
   "SAM-DISP": 10,
@@ -65,14 +65,14 @@ let totalItems = 0;
 for (const product of products) {
   // Get quantity from mapping, or random between 20-100
   const quantity = stockQuantities[product.sku] || Math.floor(Math.random() * 80) + 20;
-  
+
   // Create stock record
-  const stock = await Stock.create({
+  await Stock.create({
     product: product._id,
     quantity: quantity,
     lastUpdated: new Date()
   });
-  
+
   // Create initial stock adjustment record
   await StockAdjustment.create({
     product: product._id,
@@ -84,7 +84,7 @@ for (const product of products) {
     referenceType: "Manual",
     createdBy: adminUser._id
   });
-  
+
   console.log(`✓ ${product.name.padEnd(25)} | SKU: ${product.sku.padEnd(12)} | Stock: ${quantity}`);
   stockCount++;
   totalItems += quantity;
@@ -98,13 +98,13 @@ const inventoryValue = await products.reduce(async (accPromise, product) => {
   return acc + (qty * product.costPrice);
 }, Promise.resolve(0));
 
-console.log("\n" + "═".repeat(60));
-console.log(`✅ Inventory Seed Complete!`);
+console.log(`\n${  "═".repeat(60)}`);
+console.log("✅ Inventory Seed Complete!");
 console.log("═".repeat(60));
 console.log(`📦 Products with stock: ${stockCount}`);
 console.log(`📊 Total items in stock: ${totalItems}`);
 console.log(`💰 Total inventory value: ₹${inventoryValue.toLocaleString()}`);
-console.log("═".repeat(60) + "\n");
+console.log(`${"═".repeat(60)  }\n`);
 
 await mongoose.disconnect();
 console.log("🔌 DB disconnected\n");

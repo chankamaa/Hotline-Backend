@@ -9,7 +9,7 @@ import AppError from "../../utils/appError.js";
  * POST /api/v1/products
  */
 export const createProduct = catchAsync(async (req, res, next) => {
-  const { 
+  const {
     name, description, sku, barcode, category, subcategory,
     costPrice, sellingPrice, wholesalePrice,
     unit, taxRate, minStockLevel,
@@ -110,8 +110,8 @@ export const createProduct = catchAsync(async (req, res, next) => {
  *   - includeStock: Include stock data (default: true for POS)
  */
 export const getProducts = catchAsync(async (req, res, next) => {
-  const { 
-    category, search, minPrice, maxPrice, 
+  const {
+    category, search, minPrice, maxPrice,
     isActive, page = 1, limit = 20, sort = "name",
     includeStock = "true"
   } = req.query;
@@ -168,25 +168,25 @@ export const getProducts = catchAsync(async (req, res, next) => {
     // Get all stock records for these products in one query
     const productIds = products.map(p => p._id);
     const stockRecords = await Stock.find({ product: { $in: productIds } });
-    
+
     // Create a map for quick lookup
     const stockMap = new Map();
     stockRecords.forEach(s => {
       stockMap.set(s.product.toString(), s.quantity);
     });
-    
+
     // Add stock to each product
     productsWithStock = products.map(p => {
       const productObj = p.toObject();
       const stockQty = stockMap.get(p._id.toString()) ?? 0;
-      
+
       return {
         ...productObj,
         stock: stockQty,
-        stockStatus: stockQty === 0 
-          ? "OUT_OF_STOCK" 
-          : stockQty <= (p.minStockLevel || 5) 
-            ? "LOW_STOCK" 
+        stockStatus: stockQty === 0
+          ? "OUT_OF_STOCK"
+          : stockQty <= (p.minStockLevel || 5)
+            ? "LOW_STOCK"
             : "IN_STOCK"
       };
     });
@@ -252,9 +252,9 @@ export const getProduct = catchAsync(async (req, res, next) => {
  * GET /api/v1/products/barcode/:barcode
  */
 export const getProductByBarcode = catchAsync(async (req, res, next) => {
-  const product = await Product.findOne({ 
+  const product = await Product.findOne({
     barcode: req.params.barcode,
-    isActive: true 
+    isActive: true
   }).populate(["category", "subcategory"]);
 
   if (!product) {
@@ -299,7 +299,7 @@ export const updateProduct = catchAsync(async (req, res, next) => {
 
   // If changing SKU, check for duplicates
   if (sku && sku.toUpperCase() !== product.sku) {
-    const existingSku = await Product.findOne({ 
+    const existingSku = await Product.findOne({
       sku: sku.toUpperCase(),
       _id: { $ne: product._id }
     });
@@ -310,7 +310,7 @@ export const updateProduct = catchAsync(async (req, res, next) => {
 
   // If changing barcode, check for duplicates
   if (barcode && barcode !== product.barcode) {
-    const existingBarcode = await Product.findOne({ 
+    const existingBarcode = await Product.findOne({
       barcode,
       _id: { $ne: product._id }
     });
@@ -407,8 +407,8 @@ export const getProductsByCategory = catchAsync(async (req, res, next) => {
     category: req.params.categoryId,
     isActive: true
   })
-  .populate(["category", "subcategory"])
-  .sort("name");
+    .populate(["category", "subcategory"])
+    .sort("name");
 
   res.json({
     status: "success",

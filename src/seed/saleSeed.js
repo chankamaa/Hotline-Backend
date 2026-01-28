@@ -7,7 +7,6 @@ import Sale, { SALE_STATUS, DISCOUNT_TYPES, PAYMENT_METHODS } from "../models/sa
 import Product from "../models/product/productModel.js";
 import Stock from "../models/inventory/stockModel.js";
 import StockAdjustment, { ADJUSTMENT_TYPES } from "../models/inventory/stockAdjustmentModel.js";
-import Warranty from "../models/warranty/warrantyModel.js";
 import User from "../models/auth/userModel.js";
 
 await connectDB();
@@ -34,7 +33,7 @@ for (const p of products) {
 // Helper to create sale
 async function createSale(saleData) {
   const saleNumber = await Sale.generateSaleNumber();
-  
+
   const items = [];
   let subtotal = 0;
   let taxTotal = 0;
@@ -73,7 +72,7 @@ async function createSale(saleData) {
       const prev = stock.quantity;
       stock.quantity = Math.max(0, prev - qty);
       await stock.save();
-      
+
       await StockAdjustment.create({
         product: product._id,
         type: ADJUSTMENT_TYPES.SALE,
@@ -238,7 +237,7 @@ const sale8 = await createSale({
 });
 console.log(`✓ Sale ${sale8.saleNumber}: Bulk accessories (Rs.${sale8.grandTotal})`);
 
-console.log(`\n✅ Created 8 sales with various scenarios`);
+console.log("\n✅ Created 8 sales with various scenarios");
 
 await mongoose.disconnect();
 console.log("🔌 DB disconnected\n");

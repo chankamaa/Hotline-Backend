@@ -5,8 +5,6 @@ import mongoose from "mongoose";
 import { connectDB } from "../config/db.js";
 import RepairJob, { REPAIR_STATUS, REPAIR_PRIORITY, DEVICE_TYPES, PAYMENT_STATUS } from "../models/repair/repairJobModel.js";
 import Product from "../models/product/productModel.js";
-import Stock from "../models/inventory/stockModel.js";
-import StockAdjustment, { ADJUSTMENT_TYPES } from "../models/inventory/stockAdjustmentModel.js";
 import User from "../models/auth/userModel.js";
 
 await connectDB();
@@ -60,7 +58,7 @@ const repairs = [
     createdBy: admin._id,
     createdAt: today
   },
-  
+
   // 2. IN_PROGRESS - Technician working on it
   {
     customer: {
@@ -99,7 +97,7 @@ const repairs = [
     createdBy: admin._id,
     createdAt: twoDaysAgo
   },
-  
+
   // 3. READY - Waiting for customer pickup
   {
     customer: {
@@ -139,7 +137,7 @@ const repairs = [
     createdBy: admin._id,
     createdAt: oneWeekAgo
   },
-  
+
   // 4. COMPLETED - Paid and collected
   {
     customer: {
@@ -182,7 +180,7 @@ const repairs = [
     createdBy: admin._id,
     createdAt: oneWeekAgo
   },
-  
+
   // 5. CANCELLED - Customer cancelled
   {
     customer: {
@@ -207,7 +205,7 @@ const repairs = [
     createdBy: admin._id,
     createdAt: oneWeekAgo
   },
-  
+
   // 6. URGENT repair - Screen cracked, customer waiting
   {
     customer: {
@@ -243,7 +241,7 @@ for (const repair of repairs) {
   console.log(`✓ Repair ${jobNumber}: ${repair.device.brand} ${repair.device.model} - ${repair.status}`);
 }
 
-console.log(`\n✅ Created 6 repair jobs with various statuses`);
+console.log("\n✅ Created 6 repair jobs with various statuses");
 
 await mongoose.disconnect();
 console.log("🔌 DB disconnected\n");

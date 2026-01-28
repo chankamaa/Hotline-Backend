@@ -24,7 +24,6 @@ await Promotion.deleteMany({});
 
 // Get categories for targeting
 const mobileCategory = await Category.findOne({ name: "Mobile Phones" });
-const audioCategory = await Category.findOne({ name: "Audio" });
 const accessoriesCategory = await Category.findOne({ name: "Accessories" });
 
 // Get some products
@@ -127,7 +126,7 @@ const promotions = [
 for (const promo of promotions) {
   if (promo.targetCategories?.length === 0) delete promo.targetCategories;
   if (promo.targetProducts?.length === 0) delete promo.targetProducts;
-  
+
   await Promotion.create(promo);
   console.log(`✓ Promotion: ${promo.name} (${promo.type})`);
 }
@@ -145,7 +144,7 @@ if (iphone) {
     description: "Launch Offer"
   };
   await iphone.save();
-  console.log(`✓ iPhone 15 Pro: 5% off (Launch Offer)`);
+  console.log("✓ iPhone 15 Pro: 5% off (Launch Offer)");
 }
 
 if (samsung) {
@@ -158,7 +157,7 @@ if (samsung) {
     description: "Flash Sale"
   };
   await samsung.save();
-  console.log(`✓ Samsung Galaxy S24: Rs.10000 off (Flash Sale)`);
+  console.log("✓ Samsung Galaxy S24: Rs.10000 off (Flash Sale)");
 }
 
 console.log(`\n✅ Seeded ${promotions.length} promotions + 2 product offers`);

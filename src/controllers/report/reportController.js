@@ -1,8 +1,6 @@
 import Sale, { SALE_STATUS } from "../../models/sale/saleModel.js";
-import Return, { RETURN_STATUS, RETURN_TYPES } from "../../models/sale/returnModel.js";
+import Return, { RETURN_STATUS } from "../../models/sale/returnModel.js";
 import Product from "../../models/product/productModel.js";
-import Category from "../../models/product/categoryModel.js";
-import User from "../../models/auth/userModel.js";
 import catchAsync from "../../utils/catchAsync.js";
 import AppError from "../../utils/appError.js";
 
@@ -13,12 +11,12 @@ import AppError from "../../utils/appError.js";
  */
 export const getSalesSummary = catchAsync(async (req, res, next) => {
   const { period = "daily", date } = req.query;
-  
+
   const targetDate = date ? new Date(date) : new Date();
   let startDate, endDate, periodLabel;
 
   switch (period) {
-    case "weekly":
+    case "weekly": {
       // Start of week (Monday)
       startDate = new Date(targetDate);
       const day = startDate.getDay();
@@ -30,19 +28,20 @@ export const getSalesSummary = catchAsync(async (req, res, next) => {
       endDate.setHours(23, 59, 59, 999);
       periodLabel = `Week of ${startDate.toISOString().slice(0, 10)}`;
       break;
-    
+    }
+
     case "monthly":
       startDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1, 0, 0, 0, 0);
       endDate = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59, 999);
       periodLabel = targetDate.toLocaleString("default", { month: "long", year: "numeric" });
       break;
-    
+
     case "yearly":
       startDate = new Date(targetDate.getFullYear(), 0, 1, 0, 0, 0, 0);
       endDate = new Date(targetDate.getFullYear(), 11, 31, 23, 59, 59, 999);
       periodLabel = `Year ${targetDate.getFullYear()}`;
       break;
-    
+
     default: // daily
       startDate = new Date(targetDate);
       startDate.setHours(0, 0, 0, 0);
@@ -67,8 +66,8 @@ export const getSalesSummary = catchAsync(async (req, res, next) => {
         totalDiscount: { $sum: "$discountTotal" },
         totalTax: { $sum: "$taxTotal" },
         avgSaleValue: { $avg: "$grandTotal" },
-        totalItems: { 
-          $sum: { 
+        totalItems: {
+          $sum: {
             $reduce: {
               input: "$items",
               initialValue: 0,

@@ -238,18 +238,18 @@ saleSchema.virtual("paymentStatus").get(function() {
 saleSchema.statics.generateSaleNumber = async function() {
   const today = new Date();
   const dateStr = today.toISOString().slice(0, 10).replace(/-/g, "");
-  
+
   // Find the last sale number for today
   const lastSale = await this.findOne({
     saleNumber: { $regex: `^SL-${dateStr}` }
   }).sort({ saleNumber: -1 });
-  
+
   let sequence = 1;
   if (lastSale) {
     const lastSequence = parseInt(lastSale.saleNumber.split("-")[2], 10);
     sequence = lastSequence + 1;
   }
-  
+
   return `SL-${dateStr}-${sequence.toString().padStart(4, "0")}`;
 };
 
@@ -257,10 +257,10 @@ saleSchema.statics.generateSaleNumber = async function() {
 saleSchema.statics.getDailySummary = async function(date = new Date()) {
   const startOfDay = new Date(date);
   startOfDay.setHours(0, 0, 0, 0);
-  
+
   const endOfDay = new Date(date);
   endOfDay.setHours(23, 59, 59, 999);
-  
+
   const result = await this.aggregate([
     {
       $match: {
@@ -309,13 +309,13 @@ saleSchema.statics.getDailySummary = async function(date = new Date()) {
       }
     }
   ]);
-  
+
   // Get voided sales count
   const voidedCount = await this.countDocuments({
     createdAt: { $gte: startOfDay, $lte: endOfDay },
     status: SALE_STATUS.VOIDED
   });
-  
+
   const summary = result[0] || {
     totalSales: 0,
     totalRevenue: 0,
@@ -325,7 +325,7 @@ saleSchema.statics.getDailySummary = async function(date = new Date()) {
     cashTotal: 0,
     cardTotal: 0
   };
-  
+
   return {
     date: date.toISOString().slice(0, 10),
     ...summary,

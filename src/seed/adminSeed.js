@@ -12,7 +12,7 @@ await connectDB();
 console.log("Seeding super admin...");
 
 // Get or create admin role
-let adminRole = await Role.findOne({ name: "ADMIN" });
+const adminRole = await Role.findOne({ name: "ADMIN" });
 if (!adminRole) {
   console.log("  ⚠ ADMIN role not found. Please run roleSeed.js first.");
   await mongoose.disconnect();

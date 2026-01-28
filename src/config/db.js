@@ -7,22 +7,22 @@ export const connectDB = async () => {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
     });
-    
+
     console.log("MongoDB connected successfully");
-    
+
     // Connection event listeners for production monitoring
-    mongoose.connection.on('error', err => {
-      console.error('MongoDB connection error:', err);
+    mongoose.connection.on("error", err => {
+      console.error("MongoDB connection error:", err);
     });
-    
-    mongoose.connection.on('disconnected', () => {
-      console.warn('MongoDB disconnected');
+
+    mongoose.connection.on("disconnected", () => {
+      console.warn("MongoDB disconnected");
     });
-    
-    mongoose.connection.on('reconnected', () => {
-      console.log('MongoDB reconnected');
+
+    mongoose.connection.on("reconnected", () => {
+      console.log("MongoDB reconnected");
     });
-    
+
   } catch (error) {
     console.error("MongoDB connection error:", error.message);
     process.exit(1);
