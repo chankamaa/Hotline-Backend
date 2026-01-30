@@ -1,5 +1,10 @@
 import Warranty, { WARRANTY_STATUS, WARRANTY_TYPES, CLAIM_RESOLUTIONS } from "../../models/warranty/warrantyModel.js";
 import Product from "../../models/product/productModel.js";
+import RepairJob, { REPAIR_STATUS, DEVICE_TYPES } from "../../models/repair/repairJobModel.js";
+import Stock from "../../models/inventory/stockModel.js";
+import StockAdjustment, { ADJUSTMENT_TYPES } from "../../models/inventory/stockAdjustmentModel.js";
+import Return, { RETURN_TYPES, RETURN_STATUS } from "../../models/sale/returnModel.js";
+import Sale from "../../models/sale/saleModel.js";
 import catchAsync from "../../utils/catchAsync.js";
 import AppError from "../../utils/appError.js";
 
@@ -251,15 +256,27 @@ export const checkWarrantyStatus = catchAsync(async (req, res, next) => {
 /**
  * Create warranty claim
  * POST /api/v1/warranties/:id/claims
+ * 
+ * For REPAIR resolution: Auto-creates a repair job linked to this claim
+ * For REPLACE resolution: Deducts replacement product from inventory
+ * For REFUND resolution: Creates a return record and voids the warranty
  */
 export const createClaim = catchAsync(async (req, res, next) => {
-  const { issue, resolution, repairJobId, notes } = req.body;
+  const { 
+    issue, 
+    resolution, 
+    repairJobId,        // Optional: link to existing repair job (for REPAIR)
+    replacementProductId, // Optional: for REPLACE if different product
+    notes 
+  } = req.body;
 
   if (!issue) {
     return next(new AppError("Issue description is required", 400));
   }
 
-  const warranty = await Warranty.findById(req.params.id);
+  const warranty = await Warranty.findById(req.params.id)
+    .populate("product", "name sku costPrice sellingPrice")
+    .populate("sale", "saleNumber grandTotal items");
 
   if (!warranty) {
     return next(new AppError("Warranty not found", 404));
@@ -274,35 +291,195 @@ export const createClaim = catchAsync(async (req, res, next) => {
   // Generate claim number
   const claimNumber = await Warranty.generateClaimNumber();
 
-  // Create claim
+  // Initialize claim object
   const claim = {
     claimNumber,
     claimDate: new Date(),
     issue,
     resolution: resolution || null,
-    repairJob: repairJobId || null,
     resolvedDate: resolution ? new Date() : null,
     notes: notes || null,
-    processedBy: req.userId
+    processedBy: req.userId,
+    claimCost: 0,
+    refundAmount: 0,
+    repairJob: null,
+    replacementProduct: null,
+    returnRecord: null
   };
 
+  // Process resolution side effects
+  let resolutionResult = {};
+
+  if (resolution === CLAIM_RESOLUTIONS.REPAIR) {
+    // REPAIR Resolution: Auto-create repair job if not linking to existing
+    if (repairJobId) {
+      // Link to existing repair job
+      const existingRepair = await RepairJob.findById(repairJobId);
+      if (!existingRepair) {
+        return next(new AppError("Repair job not found", 404));
+      }
+      claim.repairJob = repairJobId;
+      resolutionResult.linkedRepairJob = existingRepair.jobNumber;
+    } else {
+      // Create new repair job
+      const jobNumber = await RepairJob.generateJobNumber();
+      
+      const repairJob = await RepairJob.create({
+        jobNumber,
+        customer: {
+          name: warranty.customer.name,
+          phone: warranty.customer.phone,
+          email: warranty.customer.email || null
+        },
+        device: {
+          type: DEVICE_TYPES.OTHER,
+          brand: "N/A",
+          model: warranty.productName,
+          serialNumber: warranty.serialNumber || null
+        },
+        problemDescription: `Warranty Claim: ${issue}`,
+        priority: "NORMAL",
+        status: REPAIR_STATUS.RECEIVED,
+        receivedBy: req.userId,
+        receivedAt: new Date(),
+        createdBy: req.userId,
+        // Track warranty reference in notes
+        diagnosisNotes: `Warranty Claim: ${claimNumber}\nOriginal Warranty: ${warranty.warrantyNumber}`
+      });
+
+      claim.repairJob = repairJob._id;
+      resolutionResult.createdRepairJob = repairJob.jobNumber;
+      resolutionResult.repairJobId = repairJob._id;
+    }
+  } else if (resolution === CLAIM_RESOLUTIONS.REPLACE) {
+    // REPLACE Resolution: Deduct replacement product from inventory
+    const productToReplace = replacementProductId 
+      ? await Product.findById(replacementProductId) 
+      : warranty.product;
+
+    if (!productToReplace) {
+      return next(new AppError("Replacement product not found", 404));
+    }
+
+    // Check stock availability
+    const stock = await Stock.getOrCreate(productToReplace._id);
+    if (stock.quantity < 1) {
+      return next(new AppError(`Insufficient stock for replacement. Available: ${stock.quantity}`, 400));
+    }
+
+    // Deduct from inventory
+    const previousQuantity = stock.quantity;
+    stock.quantity -= 1;
+    await stock.save();
+
+    // Create stock adjustment record
+    await StockAdjustment.create({
+      product: productToReplace._id,
+      type: ADJUSTMENT_TYPES.WARRANTY_REPLACE,
+      quantity: 1,
+      previousQuantity,
+      newQuantity: stock.quantity,
+      reason: `Warranty Replacement: ${claimNumber} - ${warranty.warrantyNumber}`,
+      reference: warranty._id.toString(),
+      referenceType: "Manual",
+      createdBy: req.userId
+    });
+
+    // Set claim cost as product cost price
+    claim.claimCost = productToReplace.costPrice || 0;
+    claim.replacementProduct = productToReplace._id;
+    
+    resolutionResult.replacedProduct = productToReplace.name;
+    resolutionResult.stockDeducted = 1;
+    resolutionResult.claimCost = claim.claimCost;
+  } else if (resolution === CLAIM_RESOLUTIONS.REFUND) {
+    // REFUND Resolution: Create return record and void warranty
+    
+    // Calculate refund amount from original sale
+    let refundAmount = 0;
+    
+    if (warranty.sale) {
+      // Find the item price from original sale
+      const originalSale = await Sale.findById(warranty.sale);
+      if (originalSale) {
+        const saleItem = originalSale.items.find(item => 
+          item.product.toString() === warranty.product._id.toString()
+        );
+        refundAmount = saleItem ? saleItem.total : warranty.product.sellingPrice || 0;
+      } else {
+        refundAmount = warranty.product.sellingPrice || 0;
+      }
+    } else {
+      refundAmount = warranty.product.sellingPrice || 0;
+    }
+
+    // Create return record
+    const returnNumber = await Return.generateReturnNumber();
+    
+    const returnRecord = await Return.create({
+      returnNumber,
+      originalSale: warranty.sale || null,
+      returnType: RETURN_TYPES.WARRANTY_REFUND,
+      items: [{
+        product: warranty.product._id,
+        productName: warranty.productName,
+        sku: warranty.product.sku || null,
+        serialNumber: warranty.serialNumber || null,
+        quantity: 1,
+        unitPrice: refundAmount,
+        refundAmount: refundAmount,
+        restockable: false, // Defective product - don't restock
+        condition: "DEFECTIVE"
+      }],
+      totalRefund: refundAmount,
+      reason: `Warranty Refund: ${claimNumber} - ${issue}`,
+      refundMethod: "CASH",
+      status: RETURN_STATUS.COMPLETED,
+      notes: `Warranty Claim Refund\nWarranty: ${warranty.warrantyNumber}\nClaim: ${claimNumber}`,
+      warrantyClaim: warranty._id,
+      createdBy: req.userId
+    });
+
+    claim.returnRecord = returnRecord._id;
+    claim.refundAmount = refundAmount;
+    claim.claimCost = refundAmount;
+
+    // Void the warranty after refund
+    warranty.status = WARRANTY_STATUS.VOID;
+    warranty.voidedBy = req.userId;
+    warranty.voidedAt = new Date();
+    warranty.voidReason = `Refunded via claim: ${claimNumber}`;
+
+    resolutionResult.refundAmount = refundAmount;
+    resolutionResult.returnNumber = returnNumber;
+    resolutionResult.warrantyVoided = true;
+  }
+
+  // Add claim to warranty
   warranty.claims.push(claim);
 
-  // Update status to CLAIMED if first claim
+  // Update status to CLAIMED if still active (and not voided by refund)
   if (warranty.status === WARRANTY_STATUS.ACTIVE) {
     warranty.status = WARRANTY_STATUS.CLAIMED;
   }
 
   await warranty.save();
 
-  await warranty.populate("claims.processedBy", "username");
+  // Populate for response
+  await warranty.populate([
+    { path: "claims.processedBy", select: "username" },
+    { path: "claims.repairJob", select: "jobNumber status" },
+    { path: "claims.replacementProduct", select: "name sku" },
+    { path: "claims.returnRecord", select: "returnNumber totalRefund" }
+  ]);
 
   res.status(201).json({
     status: "success",
-    message: "Warranty claim created successfully",
+    message: `Warranty claim created successfully${resolution ? ` with ${resolution} resolution` : ""}`,
     data: {
       warranty,
-      newClaim: warranty.claims[warranty.claims.length - 1]
+      newClaim: warranty.claims[warranty.claims.length - 1],
+      resolutionResult
     }
   });
 });

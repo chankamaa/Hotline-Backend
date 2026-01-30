@@ -83,21 +83,10 @@ jobs:
       - name: Run unit tests
         run: npm run test:unit
 
-  # Job 4: Integration Tests (requires MongoDB)
+  # Job 4: Integration Tests (uses MongoDB Atlas)
   test-integration:
     name: Integration Tests
     runs-on: ubuntu-latest
-    
-    services:
-      mongodb:
-        image: mongo:7
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --eval 'db.runCommand(\"ping\").ok'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     
     steps:
       - name: Checkout code
@@ -115,7 +104,7 @@ jobs:
       - name: Run integration tests
         run: npm run test:integration
         env:
-          MONGODB_URI: mongodb://localhost:27017/hotline_test
+          MONGODB_URI: ${{ secrets.MONGODB_TEST_URI }}
           JWT_SECRET: test-jwt-secret-for-ci
           NODE_ENV: test
 

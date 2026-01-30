@@ -11,7 +11,9 @@ export const ADJUSTMENT_TYPES = {
   THEFT: "THEFT",             // Stolen goods (reduces stock)
   CORRECTION: "CORRECTION",   // Inventory correction (add or reduce)
   TRANSFER_IN: "TRANSFER_IN", // Received from another location
-  TRANSFER_OUT: "TRANSFER_OUT" // Sent to another location
+  TRANSFER_OUT: "TRANSFER_OUT", // Sent to another location
+  WARRANTY_REPLACE: "WARRANTY_REPLACE", // Stock out for warranty replacement
+  WARRANTY_REPAIR: "WARRANTY_REPAIR"    // Parts used in warranty repair
 };
 
 const stockAdjustmentSchema = new mongoose.Schema({

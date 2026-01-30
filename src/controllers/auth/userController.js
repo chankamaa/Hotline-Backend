@@ -170,10 +170,10 @@ export const deleteUser = catchAsync(async (req, res, next) => {
 });
 
 /**
- * Assign roles to user
+ * Set roles for user (REPLACES all existing roles)
  * PUT /api/users/:id/roles
  */
-export const assignRoles = catchAsync(async (req, res, next) => {
+export const setRoles = catchAsync(async (req, res, next) => {
   const { roles } = req.body;
 
   if (!roles || !Array.isArray(roles)) {
@@ -198,6 +198,7 @@ export const assignRoles = catchAsync(async (req, res, next) => {
 
   res.json({
     status: "success",
+    message: "Roles replaced successfully",
     data: {
       user: {
         id: user._id,
@@ -207,6 +208,113 @@ export const assignRoles = catchAsync(async (req, res, next) => {
     }
   });
 });
+
+/**
+ * Add roles to user (ADDS to existing roles, keeps existing ones)
+ * POST /api/users/:id/roles/add
+ */
+export const addRoles = catchAsync(async (req, res, next) => {
+  const { roles } = req.body;
+
+  if (!roles || !Array.isArray(roles)) {
+    return next(new AppError("Roles array is required", 400));
+  }
+
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    return next(new AppError("User not found", 404));
+  }
+
+  // Validate all role IDs
+  const foundRoles = await Role.find({ _id: { $in: roles } });
+  if (foundRoles.length !== roles.length) {
+    return next(new AppError("One or more invalid role IDs", 400));
+  }
+
+  // Convert existing roles to strings for comparison
+  const existingRoleIds = user.roles.map(r => r.toString());
+  
+  // Add only new roles (avoid duplicates)
+  const newRoles = roles.filter(r => !existingRoleIds.includes(r.toString()));
+  
+  if (newRoles.length === 0) {
+    return next(new AppError("User already has all specified roles", 400));
+  }
+
+  user.roles = [...user.roles, ...newRoles];
+  await user.save();
+
+  await user.populate("roles", "name description");
+
+  res.json({
+    status: "success",
+    message: `${newRoles.length} role(s) added successfully`,
+    data: {
+      user: {
+        id: user._id,
+        username: user.username,
+        roles: user.roles
+      }
+    }
+  });
+});
+
+/**
+ * Remove roles from user (REMOVES specific roles, keeps others)
+ * POST /api/users/:id/roles/remove
+ */
+export const removeRoles = catchAsync(async (req, res, next) => {
+  const { roles } = req.body;
+
+  if (!roles || !Array.isArray(roles)) {
+    return next(new AppError("Roles array is required", 400));
+  }
+
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    return next(new AppError("User not found", 404));
+  }
+
+  // Convert to strings for comparison
+  const rolesToRemove = roles.map(r => r.toString());
+  const existingRoleIds = user.roles.map(r => r.toString());
+  
+  // Check if user has any of the roles to remove
+  const hasRolesToRemove = rolesToRemove.some(r => existingRoleIds.includes(r));
+  if (!hasRolesToRemove) {
+    return next(new AppError("User does not have any of the specified roles", 400));
+  }
+
+  // Filter out roles to remove
+  const remainingRoles = user.roles.filter(r => !rolesToRemove.includes(r.toString()));
+  
+  // Ensure user has at least one role
+  if (remainingRoles.length === 0) {
+    return next(new AppError("Cannot remove all roles. User must have at least one role", 400));
+  }
+
+  const removedCount = user.roles.length - remainingRoles.length;
+  user.roles = remainingRoles;
+  await user.save();
+
+  await user.populate("roles", "name description");
+
+  res.json({
+    status: "success",
+    message: `${removedCount} role(s) removed successfully`,
+    data: {
+      user: {
+        id: user._id,
+        username: user.username,
+        roles: user.roles
+      }
+    }
+  });
+});
+
+// Keep assignRoles as alias for backward compatibility
+export const assignRoles = setRoles;
+
 
 /**
  * Assign direct permissions to user (Admin override feature)

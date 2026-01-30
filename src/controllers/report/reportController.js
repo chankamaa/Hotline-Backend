@@ -1,6 +1,7 @@
 import Sale, { SALE_STATUS } from "../../models/sale/saleModel.js";
 import Return, { RETURN_STATUS } from "../../models/sale/returnModel.js";
 import Product from "../../models/product/productModel.js";
+import Warranty from "../../models/warranty/warrantyModel.js";
 import catchAsync from "../../utils/catchAsync.js";
 import AppError from "../../utils/appError.js";
 
@@ -135,6 +136,8 @@ export const getSalesSummary = catchAsync(async (req, res, next) => {
  * Get profit report
  * GET /api/v1/reports/profit
  * Query: startDate, endDate
+ * 
+ * Includes warranty losses broken down by resolution type
  */
 export const getProfitReport = catchAsync(async (req, res, next) => {
   const { startDate, endDate } = req.query;
@@ -190,6 +193,40 @@ export const getProfitReport = catchAsync(async (req, res, next) => {
   const grossProfit = totalRevenue - totalCost;
   const profitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
 
+  // Get warranty losses - aggregate claims within date range
+  const warrantyLosses = await Warranty.aggregate([
+    { $unwind: "$claims" },
+    {
+      $match: {
+        "claims.claimDate": { $gte: start, $lte: end },
+        "claims.claimCost": { $gt: 0 }
+      }
+    },
+    {
+      $group: {
+        _id: "$claims.resolution",
+        count: { $sum: 1 },
+        totalCost: { $sum: "$claims.claimCost" }
+      }
+    }
+  ]);
+
+  // Calculate total warranty cost
+  const totalWarrantyCost = warrantyLosses.reduce((sum, loss) => sum + (loss.totalCost || 0), 0);
+  const totalWarrantyClaims = warrantyLosses.reduce((sum, loss) => sum + loss.count, 0);
+
+  // Format warranty losses by resolution
+  const warrantyLossByType = warrantyLosses.reduce((acc, loss) => {
+    acc[loss._id || "PENDING"] = {
+      count: loss.count,
+      cost: Math.round(loss.totalCost * 100) / 100
+    };
+    return acc;
+  }, {});
+
+  // Calculate net profit (after warranty losses)
+  const netProfit = grossProfit - totalWarrantyCost;
+
   // Top profitable products
   const topProducts = Array.from(productProfits.values())
     .sort((a, b) => b.profit - a.profit)
@@ -211,6 +248,15 @@ export const getProfitReport = catchAsync(async (req, res, next) => {
       totalCost: Math.round(totalCost * 100) / 100,
       grossProfit: Math.round(grossProfit * 100) / 100,
       profitMargin: Math.round(profitMargin * 100) / 100,
+      // Warranty losses section
+      warrantyLosses: {
+        totalClaims: totalWarrantyClaims,
+        totalCost: Math.round(totalWarrantyCost * 100) / 100,
+        byResolution: warrantyLossByType
+      },
+      // Net profit after warranty losses
+      netProfit: Math.round(netProfit * 100) / 100,
+      netProfitMargin: totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 10000) / 100 : 0,
       topProfitableProducts: topProducts
     }
   });

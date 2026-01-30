@@ -57,6 +57,13 @@ export const createReturn = catchAsync(async (req, res, next) => {
     // Calculate refund for this item
     const itemRefund = (saleItem.unitPrice * returnQty) - (saleItem.discount || 0);
 
+    // Determine restockability based on condition
+    // If restockable is explicitly set, use that; otherwise derive from condition
+    const condition = item.condition || "GOOD";
+    const isRestockable = item.restockable !== undefined 
+      ? item.restockable 
+      : condition === "GOOD";
+
     processedItems.push({
       product: saleItem.product,
       productName: saleItem.productName,
@@ -64,7 +71,9 @@ export const createReturn = catchAsync(async (req, res, next) => {
       serialNumber: saleItem.serialNumber,
       quantity: returnQty,
       unitPrice: saleItem.unitPrice,
-      refundAmount: Math.round(itemRefund * 100) / 100
+      refundAmount: Math.round(itemRefund * 100) / 100,
+      restockable: isRestockable,
+      condition: condition
     });
 
     totalRefund += itemRefund;
@@ -87,28 +96,46 @@ export const createReturn = catchAsync(async (req, res, next) => {
     createdBy: req.userId
   });
 
-  // Restore stock for returned items
+  // Restore stock for returned items (only if restockable)
   for (const item of processedItems) {
     const stock = await Stock.getOrCreate(item.product);
     const previousQuantity = stock.quantity;
-    const newQuantity = previousQuantity + item.quantity;
 
-    stock.quantity = newQuantity;
-    stock.lastUpdated = new Date();
-    await stock.save();
+    if (item.restockable) {
+      // Item is in good condition - add back to sellable stock
+      const newQuantity = previousQuantity + item.quantity;
 
-    // Create stock adjustment record
-    await StockAdjustment.create({
-      product: item.product,
-      type: ADJUSTMENT_TYPES.RETURN,
-      quantity: item.quantity,
-      previousQuantity,
-      newQuantity,
-      reason: `Return: ${returnNumber} - ${reason}`,
-      reference: returnRecord._id.toString(),
-      referenceType: "Sale",
-      createdBy: req.userId
-    });
+      stock.quantity = newQuantity;
+      stock.lastUpdated = new Date();
+      await stock.save();
+
+      // Create stock adjustment record - RETURN (stock increases)
+      await StockAdjustment.create({
+        product: item.product,
+        type: ADJUSTMENT_TYPES.RETURN,
+        quantity: item.quantity,
+        previousQuantity,
+        newQuantity,
+        reason: `Return (${item.condition}): ${returnNumber} - ${reason}`,
+        reference: returnRecord._id.toString(),
+        referenceType: "Sale",
+        createdBy: req.userId
+      });
+    } else {
+      // Item is damaged/defective - DO NOT add to sellable stock
+      // Log as DAMAGE for accounting purposes (stock stays same)
+      await StockAdjustment.create({
+        product: item.product,
+        type: ADJUSTMENT_TYPES.DAMAGE,
+        quantity: item.quantity,
+        previousQuantity,
+        newQuantity: previousQuantity, // Stock doesn't change
+        reason: `Return (${item.condition} - Not Restockable): ${returnNumber} - ${reason}`,
+        reference: returnRecord._id.toString(),
+        referenceType: "Sale",
+        createdBy: req.userId
+      });
+    }
 
     // Void any warranties for this returned product from the original sale
     await Warranty.updateMany(

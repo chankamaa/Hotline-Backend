@@ -37,6 +37,22 @@ export const createRepair = catchAsync(async (req, res, next) => {
   // Generate job number
   const jobNumber = await RepairJob.generateJobNumber();
 
+  // Check if user is a technician - technicians can only assign repairs to themselves
+  const currentUser = await User.findById(req.userId).populate("roles");
+  const isTechnician = currentUser?.roles?.some(r => r.name === "TECHNICIAN");
+  
+  // Determine the assigned technician
+  let finalAssignedTo = req.userId; // Default: self-assign
+  
+  if (assignedTo) {
+    if (isTechnician && assignedTo !== req.userId) {
+      // Technicians can ONLY assign to themselves
+      return next(new AppError("Technicians can only assign repairs to themselves", 403));
+    }
+    // Admin/Manager/Cashier can assign to any technician
+    finalAssignedTo = assignedTo;
+  }
+
   // Create job - status is RECEIVED (device received by technician)
   const repairJob = await RepairJob.create({
     jobNumber,
@@ -49,7 +65,7 @@ export const createRepair = catchAsync(async (req, res, next) => {
     advancePaymentReceivedBy: advancePayment > 0 ? req.userId : null,
     advancePaymentReceivedAt: advancePayment > 0 ? new Date() : null,
     expectedCompletionDate,
-    assignedTo: assignedTo || req.userId,  // Default to creator (technician)
+    assignedTo: finalAssignedTo,
     assignedBy: req.userId,
     assignedAt: new Date(),
     receivedBy: req.userId,

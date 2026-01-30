@@ -25,7 +25,14 @@ const categorySchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  toJSON: { virtuals: true },
+  toJSON: { 
+    virtuals: true,
+    transform: function(doc, ret) {
+      delete ret.id;  // Remove duplicate id (keep only _id)
+      delete ret.__v; // Remove version key
+      return ret;
+    }
+  },
   toObject: { virtuals: true }
 });
 

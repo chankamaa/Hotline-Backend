@@ -44,9 +44,32 @@ const claimSchema = new mongoose.Schema({
     type: String,
     enum: Object.values(CLAIM_RESOLUTIONS)
   },
+  // For REPAIR resolution - linked repair job
   repairJob: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "RepairJob"
+  },
+  // For REPLACE resolution - replacement product (if different from original)
+  replacementProduct: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Product"
+  },
+  // For REFUND resolution - linked return record
+  returnRecord: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Return"
+  },
+  // For REFUND resolution - refund amount
+  refundAmount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  // Cost of this claim (parts, labor, replacement cost, or refund amount)
+  claimCost: {
+    type: Number,
+    default: 0,
+    min: 0
   },
   resolvedDate: Date,
   notes: {

@@ -3,7 +3,8 @@ import mongoose from "mongoose";
 // Return types
 export const RETURN_TYPES = {
   REFUND: "REFUND",     // Full/partial refund with cash back
-  EXCHANGE: "EXCHANGE"  // Return old item + buy new item
+  EXCHANGE: "EXCHANGE", // Return old item + buy new item
+  WARRANTY_REFUND: "WARRANTY_REFUND" // Warranty claim refund
 };
 
 // Return status
@@ -49,6 +50,17 @@ const returnItemSchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: 0
+  },
+  // Whether item can be added back to sellable stock
+  restockable: {
+    type: Boolean,
+    default: true  // Defaults to true (good condition)
+  },
+  // Condition of returned item
+  condition: {
+    type: String,
+    enum: ["GOOD", "DAMAGED", "DEFECTIVE", "USED"],
+    default: "GOOD"
   }
 }, { _id: true });
 
@@ -124,6 +136,12 @@ const returnSchema = new mongoose.Schema({
     type: String,
     trim: true,
     maxlength: 500
+  },
+  // Reference to warranty claim (for WARRANTY_REFUND type)
+  warrantyClaim: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Warranty",
+    default: null
   },
   // User who processed the return
   createdBy: {

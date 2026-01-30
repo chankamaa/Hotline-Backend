@@ -59,12 +59,9 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_INVENTORY,
     PERMISSIONS.VIEW_CATEGORIES,
     PERMISSIONS.VIEW_PRODUCTS,
-    // Repair permissions for Cashier
-    PERMISSIONS.CREATE_REPAIR,
+    // Repair permissions for Cashier (view and collect payment only)
     PERMISSIONS.VIEW_REPAIRS,
-    PERMISSIONS.ASSIGN_REPAIR,
     PERMISSIONS.COLLECT_REPAIR_PAYMENT,
-    PERMISSIONS.CANCEL_REPAIR,
     // Warranty permissions for Cashier
     PERMISSIONS.VIEW_WARRANTIES,
     PERMISSIONS.CREATE_WARRANTY_CLAIM,
@@ -73,6 +70,8 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_RETURNS,
     // Promotion permissions for Cashier (view only)
     PERMISSIONS.VIEW_PROMOTIONS,
+    // Discount permissions for Cashier
+    PERMISSIONS.APPLY_DISCOUNT,
   ],
 
   TECHNICIAN: [
@@ -83,6 +82,7 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_OWN_REPAIRS,
     PERMISSIONS.UPDATE_REPAIR,
     PERMISSIONS.COMPLETE_REPAIR,
+    PERMISSIONS.CREATE_REPAIR,
     // Warranty permissions for Technician
     PERMISSIONS.VIEW_WARRANTIES,
   ],
