@@ -9,6 +9,11 @@ import {
   deleteProduct,
   getProductsByCategory
 } from "../../controllers/product/productController.js";
+import {
+  downloadTemplate,
+  uploadCSV,
+  bulkImportProducts
+} from "../../controllers/product/bulkImportController.js";
 import { authenticate } from "../../middlewares/auth/authenticate.js";
 import { authorize } from "../../middlewares/auth/authorize.js";
 import { PERMISSIONS } from "../../constants/permission.js";
@@ -17,6 +22,10 @@ const router = express.Router();
 
 // All routes require authentication
 router.use(authenticate);
+
+// Bulk import routes (must come before /:id to avoid conflicts)
+router.get("/bulk/template", authorize(PERMISSIONS.BULK_IMPORT_PRODUCTS), downloadTemplate);
+router.post("/bulk/import", authorize(PERMISSIONS.BULK_IMPORT_PRODUCTS), uploadCSV, bulkImportProducts);
 
 // Search routes (must come before /:id to avoid conflicts)
 router.get("/search", authorize(PERMISSIONS.VIEW_PRODUCTS), searchProducts);
@@ -31,3 +40,4 @@ router.put("/:id", authorize(PERMISSIONS.UPDATE_PRODUCT), updateProduct);
 router.delete("/:id", authorize(PERMISSIONS.DELETE_PRODUCT), deleteProduct);
 
 export default router;
+

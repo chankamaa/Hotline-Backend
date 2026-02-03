@@ -35,6 +35,7 @@ const PERMISSION_DESCRIPTIONS = {
   VIEW_PRODUCTS: "View product catalog",
   UPDATE_PRODUCT: "Update product details and pricing",
   DELETE_PRODUCT: "Delete/deactivate products",
+  BULK_IMPORT_PRODUCTS: "Bulk import products from CSV file",
   MANAGE_INVENTORY: "Add, update, delete inventory items",
   VIEW_INVENTORY: "View inventory list",
   CREATE_REPAIR: "Create new repair jobs",
