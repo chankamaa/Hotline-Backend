@@ -10,8 +10,7 @@ export default {
     "**/tests/**/*.spec.js",
   ],
   
-  // Setup files
-  setupFilesAfterEnv: ["./tests/setup.js"],
+  // Setup files (none currently)
   
   // Coverage configuration
   collectCoverageFrom: [
