@@ -25,28 +25,7 @@ import promotionRoutes from "./routes/promotion/promotionRoutes.js";
 
 const app = express();
 
-// Security Middleware
-app.use(helmet()); // Set security HTTP headers
-
-// Rate limiting - prevent brute force attacks
-const limiter = rateLimit({
-  max: 500, // 500 requests per window (increased for testing)
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  message: "Too many requests from this IP, please try again after 15 minutes",
-  standardHeaders: true, // Return rate limit info in headers
-  legacyHeaders: false,
-  skip: () => process.env.NODE_ENV === "development", // Skip in development
-});
-app.use("/api", limiter);
-
-// Request logging
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-} else {
-  app.use(morgan("combined"));
-}
-
-// CORS Configuration - Multiple origins support
+// CORS Configuration - MUST be FIRST before any other middleware
 const allowedOrigins = [
   'https://hotline-admin.vercel.app',
   'http://localhost:3000',
@@ -56,7 +35,7 @@ const allowedOrigins = [
   ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [])
 ];
 
-app.use(cors({
+const corsOptions = {
   origin: function(origin, callback) {
     // Allow requests with no origin (mobile apps, Postman, curl, etc.)
     if (!origin) return callback(null, true);
@@ -70,9 +49,40 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly for all routes
+app.options('*', cors(corsOptions));
+
+// Security Middleware - AFTER CORS
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-app.use(express.json({ limit: "10kb" })); // Limit body size
+
+// Rate limiting - prevent brute force attacks
+const limiter = rateLimit({
+  max: 500, // 500 requests per window (increased for testing)
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  message: "Too many requests from this IP, please try again after 15 minutes",
+  standardHeaders: true, // Return rate limit info in headers
+  legacyHeaders: false,
+  skip: (req) => process.env.NODE_ENV === "development" || req.method === "OPTIONS", // Skip OPTIONS
+});
+app.use("/api", limiter);
+
+// Request logging
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+} else {
+  app.use(morgan("combined"));
+}
+
+// Body parsers
+app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 app.use(cookieParser());
 
