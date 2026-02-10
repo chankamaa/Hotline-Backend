@@ -5,7 +5,8 @@ import {
   getSalesByCategory,
   getSalesByCashier,
   getTopProducts,
-  getReturnAnalytics
+  getReturnAnalytics,
+  getRepairSummary
 } from "../../controllers/report/reportController.js";
 import { authenticate } from "../../middlewares/auth/authenticate.js";
 import { authorize } from "../../middlewares/auth/authorize.js";
@@ -33,5 +34,8 @@ router.get("/top-products", authorize(PERMISSIONS.VIEW_SALES_REPORT), getTopProd
 
 // Return analytics
 router.get("/returns", authorize(PERMISSIONS.VIEW_SALES_REPORT), getReturnAnalytics);
+
+// Repair summary
+router.get("/repairs", authorize(PERMISSIONS.VIEW_REPAIRS), getRepairSummary);
 
 export default router;

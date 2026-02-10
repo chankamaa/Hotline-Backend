@@ -1,4 +1,5 @@
 import Sale, { SALE_STATUS } from "../../models/sale/saleModel.js";
+import RepairJob, { REPAIR_STATUS, PAYMENT_STATUS } from "../../models/repair/repairJobModel.js";
 import Return, { RETURN_STATUS } from "../../models/sale/returnModel.js";
 import Product from "../../models/product/productModel.js";
 import Warranty from "../../models/warranty/warrantyModel.js";
@@ -508,6 +509,229 @@ export const getReturnAnalytics = catchAsync(async (req, res, next) => {
         createdBy: r.createdBy?.username,
         createdAt: r.createdAt
       }))
+    }
+  });
+});
+
+/**
+ * Get repair summary report
+ * GET /api/v1/reports/repairs
+ * Query: period=daily|weekly|monthly|yearly, date=YYYY-MM-DD, startDate, endDate
+ */
+export const getRepairSummary = catchAsync(async (req, res, next) => {
+  const { period = "monthly", date, startDate: startDateParam, endDate: endDateParam } = req.query;
+
+  let startDate, endDate, periodLabel;
+
+  if (startDateParam && endDateParam) {
+    startDate = new Date(startDateParam);
+    startDate.setHours(0, 0, 0, 0);
+    endDate = new Date(endDateParam);
+    endDate.setHours(23, 59, 59, 999);
+    periodLabel = `${startDate.toISOString().slice(0, 10)} to ${endDate.toISOString().slice(0, 10)}`;
+  } else {
+    const targetDate = date ? new Date(date) : new Date();
+    switch (period) {
+      case "weekly": {
+        startDate = new Date(targetDate);
+        const day = startDate.getDay();
+        const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+        startDate.setDate(diff);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
+        periodLabel = `Week of ${startDate.toISOString().slice(0, 10)}`;
+        break;
+      }
+      case "monthly":
+        startDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1, 0, 0, 0, 0);
+        endDate = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59, 999);
+        periodLabel = targetDate.toLocaleString("default", { month: "long", year: "numeric" });
+        break;
+      case "yearly":
+        startDate = new Date(targetDate.getFullYear(), 0, 1, 0, 0, 0, 0);
+        endDate = new Date(targetDate.getFullYear(), 11, 31, 23, 59, 59, 999);
+        periodLabel = `Year ${targetDate.getFullYear()}`;
+        break;
+      default: // daily
+        startDate = new Date(targetDate);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(targetDate);
+        endDate.setHours(23, 59, 59, 999);
+        periodLabel = targetDate.toISOString().slice(0, 10);
+    }
+  }
+
+  // Status breakdown
+  const statusBreakdown = await RepairJob.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate, $lte: endDate }
+      }
+    },
+    {
+      $group: {
+        _id: "$status",
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const statusMap = statusBreakdown.reduce((acc, s) => {
+    acc[s._id] = s.count;
+    return acc;
+  }, {});
+
+  // Financial summary
+  const financials = await RepairJob.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate, $lte: endDate }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalJobs: { $sum: 1 },
+        totalAdvancePayments: { $sum: "$advancePayment" },
+        totalFinalPayments: { $sum: "$finalPayment" },
+        totalLaborCost: { $sum: "$laborCost" },
+        totalPartsCost: { $sum: "$partsTotal" },
+        totalRevenue: { $sum: "$totalCost" },
+        avgRepairCost: { $avg: "$totalCost" },
+        advanceCount: {
+          $sum: { $cond: [{ $gt: ["$advancePayment", 0] }, 1, 0] }
+        }
+      }
+    }
+  ]);
+
+  const financial = financials[0] || {
+    totalJobs: 0,
+    totalAdvancePayments: 0,
+    totalFinalPayments: 0,
+    totalLaborCost: 0,
+    totalPartsCost: 0,
+    totalRevenue: 0,
+    avgRepairCost: 0,
+    advanceCount: 0
+  };
+
+  // Payment status breakdown
+  const paymentStatusBreakdown = await RepairJob.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate, $lte: endDate }
+      }
+    },
+    {
+      $group: {
+        _id: "$paymentStatus",
+        count: { $sum: 1 },
+        totalAmount: { $sum: { $add: ["$advancePayment", "$finalPayment"] } }
+      }
+    }
+  ]);
+
+  // Technician performance
+  const technicianStats = await RepairJob.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate, $lte: endDate },
+        assignedTo: { $ne: null }
+      }
+    },
+    {
+      $group: {
+        _id: "$assignedTo",
+        totalJobs: { $sum: 1 },
+        completedJobs: {
+          $sum: { $cond: [{ $eq: ["$status", REPAIR_STATUS.COMPLETED] }, 1, 0] }
+        },
+        totalRevenue: { $sum: "$totalCost" },
+        avgRepairCost: { $avg: "$totalCost" }
+      }
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "_id",
+        foreignField: "_id",
+        as: "technician"
+      }
+    },
+    { $unwind: "$technician" },
+    {
+      $project: {
+        _id: 1,
+        username: "$technician.username",
+        totalJobs: 1,
+        completedJobs: 1,
+        completionRate: {
+          $cond: [
+            { $gt: ["$totalJobs", 0] },
+            { $round: [{ $multiply: [{ $divide: ["$completedJobs", "$totalJobs"] }, 100] }, 1] },
+            0
+          ]
+        },
+        totalRevenue: { $round: ["$totalRevenue", 2] },
+        avgRepairCost: { $round: ["$avgRepairCost", 2] }
+      }
+    },
+    { $sort: { completedJobs: -1 } }
+  ]);
+
+  // Priority breakdown
+  const priorityBreakdown = await RepairJob.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate, $lte: endDate }
+      }
+    },
+    {
+      $group: {
+        _id: "$priority",
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  res.json({
+    status: "success",
+    data: {
+      period,
+      periodLabel,
+      startDate: startDate.toISOString().slice(0, 10),
+      endDate: endDate.toISOString().slice(0, 10),
+      overview: {
+        totalJobs: financial.totalJobs,
+        received: statusMap[REPAIR_STATUS.RECEIVED] || 0,
+        inProgress: statusMap[REPAIR_STATUS.IN_PROGRESS] || 0,
+        ready: statusMap[REPAIR_STATUS.READY] || 0,
+        completed: statusMap[REPAIR_STATUS.COMPLETED] || 0,
+        cancelled: statusMap[REPAIR_STATUS.CANCELLED] || 0
+      },
+      financial: {
+        totalRevenue: Math.round(financial.totalRevenue * 100) / 100,
+        totalAdvancePayments: Math.round(financial.totalAdvancePayments * 100) / 100,
+        totalFinalPayments: Math.round(financial.totalFinalPayments * 100) / 100,
+        totalCollected: Math.round((financial.totalAdvancePayments + financial.totalFinalPayments) * 100) / 100,
+        totalLaborCost: Math.round(financial.totalLaborCost * 100) / 100,
+        totalPartsCost: Math.round(financial.totalPartsCost * 100) / 100,
+        avgRepairCost: Math.round((financial.avgRepairCost || 0) * 100) / 100,
+        advancePaymentsCount: financial.advanceCount
+      },
+      paymentStatus: paymentStatusBreakdown.map(p => ({
+        status: p._id,
+        count: p.count,
+        totalAmount: Math.round(p.totalAmount * 100) / 100
+      })),
+      priorityBreakdown: priorityBreakdown.map(p => ({
+        priority: p._id,
+        count: p.count
+      })),
+      technicianPerformance: technicianStats
     }
   });
 });
