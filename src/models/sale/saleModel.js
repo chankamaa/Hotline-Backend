@@ -208,13 +208,13 @@ saleSchema.index({ createdAt: -1 });
 
 // Virtual for total items count
 saleSchema.virtual("itemCount").get(function() {
-  return this.items.reduce((sum, item) => sum + item.quantity, 0);
+  return (this.items || []).reduce((sum, item) => sum + item.quantity, 0);
 });
 
 // Virtual for payment status
 saleSchema.virtual("paymentStatus").get(function() {
-  if (this.amountPaid >= this.grandTotal) return "PAID";
-  if (this.amountPaid > 0) return "PARTIAL";
+  if ((this.amountPaid || 0) >= (this.grandTotal || 0)) return "PAID";
+  if ((this.amountPaid || 0) > 0) return "PARTIAL";
   return "UNPAID";
 });
 
